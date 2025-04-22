@@ -1,15 +1,17 @@
-package com.example.demo;
+package com.example.demo.controller;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/hello")
-public class HelloController {
+@RequestMapping("/api/test")
+@CrossOrigin(origins = "http://localhost:8080", allowCredentials = "true")
+public class TestController {
 
     @GetMapping
     public Map<String, String> test() {
@@ -19,5 +21,3 @@ public class HelloController {
         return response;
     }
 }
-
-

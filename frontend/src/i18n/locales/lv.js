@@ -4,9 +4,9 @@ export default {
 
     // Navigation
     nav: {
-        home: 'Sākums',
         calendar: 'Kalendārs',
         achievements: 'Sasniegumi',
+        about: 'Par mums',
         login: 'Pieslēgties',
         signup: 'Reģistrēties',
         logout: 'Iziet'
@@ -188,6 +188,27 @@ export default {
             strong: 'Spēcīga',
             veryStrong: 'Ļoti spēcīga'
         }
+    },
+
+     //About Page
+     about: {
+        titleStart: 'Par mums',
+        titleAccent: 'TaskMaster',
+        description: 'TaskMaster ir jaudīgs uzdevumu pārvaldības rīks, kas izstrādāts, lai palīdzētu optimizēt jūsu laiku un palielinātu produktivitāti. Ar tādām funkcijām kā gudra plānošana, uzdevumu izsekošana un sasniegumu sistēma TaskMaster ļauj jums pārņemt kontroli pār saviem uzdevumiem un katru dienu sasniegt vairāk. Neatkarīgi no tā, vai pārvaldāt personīgos projektus vai profesionālās saistības, TaskMaster ir šeit, lai atbalstītu jūsu ceļu uz panākumiem.',
+        OurTeam: 'Iepazīstieties ar komandu',
+        team1: 'Danils Makarovs - Morāles atbalsts',
+        team2: 'Deniska Ustinovičš - Fullstack programmētājs',
+        team3: 'Rolands Kalniņš - Dizainers',
+        team: {
+            subtitle: 'Mēs esam aizrautīgu cilvēku komanda, kas vēlas palīdzēt jums sasniegt jūsu mērķus. Mūsu misija ir nodrošināt jūs ar labākajiem rīkiem un resursiem, lai optimizētu jūsu laiku un palielinātu produktivitāti.',
+            text1: "Viņam ir liela pieredze morālās palīdzības sniegšanā. Bez morālā atbalsta mūsu komanda nevarētu labi strādāt.",
+            text2: '10 gadu pieredze, visvērtīgākā vērtība jebkurā komandā. Prot arī gatavot ēst.',
+            text3: "Nav ko teikt, tikai to, ka viņš ir labākais."
+        },
+        cta: {
+            title: 'Vēlaties to izmēģināt?',
+            subtitle: 'Tad pievienojieties mums un sāciet savu produktivitātes ceļojumu jau šodien!',
+        },
     },
 
     // Language Selection

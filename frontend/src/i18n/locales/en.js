@@ -4,9 +4,9 @@ export default {
 
     // Navigation
     nav: {
-        home: 'Home',
         calendar: 'Calendar',
         achievements: 'Achievements',
+        about: 'About',
         login: 'Login',
         signup: 'Sign Up',
         logout: 'Logout'
@@ -196,6 +196,27 @@ export default {
             strong: 'Strong',
             veryStrong: 'Very Strong'
         }
+    },
+
+    //About Page
+    about: {
+        titleStart: 'About us',
+        titleAccent: 'TaskMaster',
+        description: 'TaskMaster is a powerful task management tool designed to help you optimize your time and boost productivity. With features like smart planning, task tracking, and an achievement system, TaskMaster empowers you to take control of your tasks and achieve more every day. Whether you\'re managing personal projects or professional commitments, TaskMaster is here to support your journey towards success.',
+        OurTeam: 'Meet the Team',
+        team1: 'Danils Makarovs - Morale Support',
+        team2: 'Deniska Ustinovičš - Fullstack Developer',
+        team3: 'Rolands Kalniņš - Designer',
+        team: {
+            subtitle: 'We are a team of passionate individuals dedicated to helping you achieve your goals. Our mission is to provide you with the best tools and resources to optimize your time and boost your productivity.',
+            text1: "He has a lot of experience in providing moral assistance. Without moral support, our team couldn't have done well.",
+            text2: '10 years experience, the most valuable asset on any team. Also knows how to cook.',
+            text3: "There's nothing to say, just that he's the best."
+        },
+        cta: {
+            title: 'Wanna try it out?',
+            subtitle: 'Then join us and start your productivity journey today!',
+        },
     },
 
     // Language Selection

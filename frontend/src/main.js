@@ -1,48 +1,24 @@
-// main.js - обновление для добавления сервиса достижений
-
 import { createApp } from 'vue';
 import App from './App.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import i18n from './i18n';
 
-// Импортируем компоненты страниц
+// Import services
+import auth from './services/auth';
+
+// Import components
 import HomePage from './components/HomePage.vue';
 import CalendarPage from './components/CalendarPage.vue';
 import AchievementsPage from './components/AchievementsPage.vue';
 import AuthPage from './components/AuthPage.vue';
+import AboutPage from './components/AboutPage.vue';
 
-// Добавляем импорт сервиса достижений для его инициализации
-import './services/achievements';
-
-// Check for existing authentication
-const checkAuth = () => {
-    const token = localStorage.getItem('auth_token');
-    const user = localStorage.getItem('user');
-
-    if (token && user) {
-        try {
-            return {
-                isAuthenticated: true,
-                user: JSON.parse(user),
-                token: token
-            };
-        } catch (e) {
-            // If parsing fails, clear local storage
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user');
-        }
-    }
-
-    return {
-        isAuthenticated: false,
-        user: null,
-        token: null
-    };
-};
+// Initialize auth service
+auth.init();
 
 // Route guards
 const requireAuth = (to, from, next) => {
-    if (!auth.isAuthenticated) {
+    if (!auth.isAuthenticated()) {
         next({
             path: '/auth',
             query: {
@@ -79,6 +55,11 @@ const routes = [
         component: AuthPage,
         meta: { title: 'Log In - TaskMaster' }
     },
+    {
+        path: '/about',
+        component: AboutPage,
+        meta: { title: 'About - TaskMaster' }
+    },
     // Catch-all 404 route
     {
         path: '/:pathMatch(.*)*',
@@ -100,7 +81,7 @@ const router = createRouter({
 
 // Update document title based on route meta and current language
 router.afterEach((to) => {
-    // Динамически обновляем заголовок в зависимости от выбранного языка
+    // Dynamically update title based on selected language
     const appName = i18n.global.t('appName');
 
     if (to.path === '/') {
@@ -117,16 +98,13 @@ router.afterEach((to) => {
     }
 });
 
-// Get initial auth state
-const auth = checkAuth();
-
 // Create Vue app
 const app = createApp(App);
 
 // Global properties
-app.config.globalProperties.$auth = auth;
+app.config.globalProperties.$auth = auth.state;
 
-// Используем i18n
+// Use i18n
 app.use(i18n);
 
 // Use router

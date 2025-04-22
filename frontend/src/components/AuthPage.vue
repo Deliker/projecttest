@@ -14,31 +14,35 @@
         <div class="auth-forms">
           <transition name="form-fade" mode="out-in">
             <form v-if="!isRegistering" @submit.prevent="handleLogin" class="auth-form" key="login">
-              <h2 class="form-title">Welcome Back</h2>
-              <p class="auth-subtitle">Log in to your account to continue</p>
+              <h2 class="form-title">{{ $t('auth.login.title') }}</h2>
+              <p class="auth-subtitle">{{ $t('auth.login.subtitle') }}</p>
+
+              <div v-if="error" class="error-alert">
+                {{ error }}
+              </div>
 
               <div class="form-group" :class="{ 'has-error': loginErrors.email }">
-                <label for="login-email">Email</label>
+                <label for="login-email">{{ $t('auth.login.email') }}</label>
                 <input
                     type="email"
                     id="login-email"
                     v-model="loginForm.email"
                     required
-                    placeholder="Enter your email"
+                    :placeholder="$t('auth.login.email')"
                     @focus="loginErrors.email = ''"
                 />
                 <span v-if="loginErrors.email" class="error-message">{{ loginErrors.email }}</span>
               </div>
 
               <div class="form-group" :class="{ 'has-error': loginErrors.password }">
-                <label for="login-password">Password</label>
+                <label for="login-password">{{ $t('auth.login.password') }}</label>
                 <div class="password-input">
                   <input
                       :type="showPassword ? 'text' : 'password'"
                       id="login-password"
                       v-model="loginForm.password"
                       required
-                      placeholder="Enter your password"
+                      :placeholder="$t('auth.login.password')"
                       @focus="loginErrors.password = ''"
                   />
                   <button
@@ -63,18 +67,18 @@
               <div class="form-actions">
                 <label class="remember-me">
                   <input type="checkbox" v-model="loginForm.remember" />
-                  <span>Remember me</span>
+                  <span>{{ $t('auth.login.rememberMe') }}</span>
                 </label>
-                <a href="#" class="forgot-password">Forgot password?</a>
+                <a href="#" class="forgot-password">{{ $t('auth.login.forgotPassword') }}</a>
               </div>
 
               <button type="submit" class="btn btn-primary" :disabled="loading">
-                <span v-if="!loading">Log In</span>
+                <span v-if="!loading">{{ $t('nav.login') }}</span>
                 <span v-else class="loading-spinner"></span>
               </button>
 
               <div class="social-login">
-                <p class="or-divider"><span>or continue with</span></p>
+                <p class="or-divider"><span>{{ $t('auth.login.continueWith') }}</span></p>
                 <div class="social-buttons">
                   <button type="button" class="social-btn google">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -93,50 +97,54 @@
               </div>
 
               <p class="auth-switch">
-                Don't have an account?
-                <a href="#" @click.prevent="toggleForm">Sign Up</a>
+                {{ $t('auth.login.noAccount') }}
+                <a href="#" @click.prevent="toggleForm">{{ $t('auth.login.signUp') }}</a>
               </p>
             </form>
 
             <form v-else @submit.prevent="handleRegister" class="auth-form" key="register">
-              <h2 class="form-title">Create Account</h2>
-              <p class="auth-subtitle">Join TaskMaster to boost your productivity</p>
+              <h2 class="form-title">{{ $t('auth.register.title') }}</h2>
+              <p class="auth-subtitle">{{ $t('auth.register.subtitle') }}</p>
+
+              <div v-if="error" class="error-alert">
+                {{ error }}
+              </div>
 
               <div class="form-group" :class="{ 'has-error': registerErrors.name }">
-                <label for="register-name">Full Name</label>
+                <label for="register-name">{{ $t('auth.register.fullName') }}</label>
                 <input
                     type="text"
                     id="register-name"
                     v-model="registerForm.name"
                     required
-                    placeholder="Enter your full name"
+                    :placeholder="$t('auth.register.fullName')"
                     @focus="registerErrors.name = ''"
                 />
                 <span v-if="registerErrors.name" class="error-message">{{ registerErrors.name }}</span>
               </div>
 
               <div class="form-group" :class="{ 'has-error': registerErrors.email }">
-                <label for="register-email">Email</label>
+                <label for="register-email">{{ $t('auth.register.email') }}</label>
                 <input
                     type="email"
                     id="register-email"
                     v-model="registerForm.email"
                     required
-                    placeholder="Enter your email"
+                    :placeholder="$t('auth.register.email')"
                     @focus="registerErrors.email = ''"
                 />
                 <span v-if="registerErrors.email" class="error-message">{{ registerErrors.email }}</span>
               </div>
 
               <div class="form-group" :class="{ 'has-error': registerErrors.password }">
-                <label for="register-password">Password</label>
+                <label for="register-password">{{ $t('auth.register.password') }}</label>
                 <div class="password-input">
                   <input
                       :type="showPassword ? 'text' : 'password'"
                       id="register-password"
                       v-model="registerForm.password"
                       required
-                      placeholder="Create a password"
+                      :placeholder="$t('auth.register.createPassword')"
                       @focus="registerErrors.password = ''"
                       @input="checkPasswordStrength"
                   />
@@ -159,7 +167,7 @@
                 <span v-if="registerErrors.password" class="error-message">{{ registerErrors.password }}</span>
 
                 <div class="password-strength" v-if="registerForm.password">
-                  <div class="strength-label">Password Strength: <span :class="strengthClass">{{ passwordStrength }}</span></div>
+                  <div class="strength-label">{{ $t('auth.passwordStrength.weak') }}: <span :class="strengthClass">{{ passwordStrength }}</span></div>
                   <div class="strength-meter">
                     <div class="strength-segment" :class="{ active: passwordScore >= 1 }"></div>
                     <div class="strength-segment" :class="{ active: passwordScore >= 2 }"></div>
@@ -170,14 +178,14 @@
               </div>
 
               <div class="form-group" :class="{ 'has-error': registerErrors.confirmPassword }">
-                <label for="register-confirm-password">Confirm Password</label>
+                <label for="register-confirm-password">{{ $t('auth.register.confirmPassword') }}</label>
                 <div class="password-input">
                   <input
                       :type="showPassword ? 'text' : 'password'"
                       id="register-confirm-password"
                       v-model="registerForm.confirmPassword"
                       required
-                      placeholder="Confirm your password"
+                      :placeholder="$t('auth.register.confirmYourPassword')"
                       @focus="registerErrors.confirmPassword = ''"
                   />
                 </div>
@@ -187,18 +195,18 @@
               <div class="form-group terms-checkbox">
                 <label class="checkbox-label">
                   <input type="checkbox" v-model="registerForm.agreeTerms" required />
-                  <span>I agree to the <a href="#" class="terms-link">Terms of Service</a> and <a href="#" class="terms-link">Privacy Policy</a></span>
+                  <span>{{ $t('auth.register.agreeTerms') }} <a href="#" class="terms-link">{{ $t('auth.register.termsService') }}</a> {{ $t('auth.register.and') }} <a href="#" class="terms-link">{{ $t('auth.register.privacyPolicy') }}</a></span>
                 </label>
                 <span v-if="registerErrors.agreeTerms" class="error-message">{{ registerErrors.agreeTerms }}</span>
               </div>
 
               <button type="submit" class="btn btn-primary" :disabled="loading">
-                <span v-if="!loading">Create Account</span>
+                <span v-if="!loading">{{ $t('nav.signup') }}</span>
                 <span v-else class="loading-spinner"></span>
               </button>
 
               <div class="social-login">
-                <p class="or-divider"><span>or sign up with</span></p>
+                <p class="or-divider"><span>{{ $t('auth.register.signUpWith') }}</span></p>
                 <div class="social-buttons">
                   <button type="button" class="social-btn google">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -217,8 +225,8 @@
               </div>
 
               <p class="auth-switch">
-                Already have an account?
-                <a href="#" @click.prevent="toggleForm">Log In</a>
+                {{ $t('auth.register.alreadyAccount') }}
+                <a href="#" @click.prevent="toggleForm">{{ $t('auth.register.logIn') }}</a>
               </p>
             </form>
           </transition>
@@ -229,12 +237,20 @@
 </template>
 
 <script>
+import { useI18n } from 'vue-i18n';
+import authService from '../services/auth';
+
 export default {
+  setup() {
+    const i18n = useI18n();
+    return { i18n };
+  },
   data() {
     return {
       isRegistering: this.$route.query.mode === 'register',
       showPassword: false,
       loading: false,
+      error: null,
       loginForm: {
         email: '',
         password: '',
@@ -269,6 +285,7 @@ export default {
     '$route.query.mode': {
       handler(newMode) {
         this.isRegistering = newMode === 'register';
+        this.error = null;
       },
       immediate: true
     }
@@ -278,6 +295,7 @@ export default {
       this.isRegistering = !this.isRegistering;
       this.showPassword = false;
       this.resetErrors();
+      this.error = null;
       this.$router.replace({
         query: {
           mode: this.isRegistering ? 'register' : 'login'
@@ -292,15 +310,15 @@ export default {
       this.resetErrors();
 
       if (!this.loginForm.email) {
-        this.loginErrors.email = 'Email is required';
+        this.loginErrors.email = this.$t('auth.validation.required', { field: this.$t('auth.login.email') });
         isValid = false;
       } else if (!this.isValidEmail(this.loginForm.email)) {
-        this.loginErrors.email = 'Please enter a valid email address';
+        this.loginErrors.email = this.$t('auth.validation.validEmail');
         isValid = false;
       }
 
       if (!this.loginForm.password) {
-        this.loginErrors.password = 'Password is required';
+        this.loginErrors.password = this.$t('auth.validation.required', { field: this.$t('auth.login.password') });
         isValid = false;
       }
 
@@ -311,36 +329,36 @@ export default {
       this.resetErrors();
 
       if (!this.registerForm.name || this.registerForm.name.trim().length < 2) {
-        this.registerErrors.name = 'Name must be at least 2 characters';
+        this.registerErrors.name = this.$t('auth.validation.minLength', { field: this.$t('auth.register.fullName'), length: 2 });
         isValid = false;
       }
 
       if (!this.registerForm.email) {
-        this.registerErrors.email = 'Email is required';
+        this.registerErrors.email = this.$t('auth.validation.required', { field: this.$t('auth.register.email') });
         isValid = false;
       } else if (!this.isValidEmail(this.registerForm.email)) {
-        this.registerErrors.email = 'Please enter a valid email address';
+        this.registerErrors.email = this.$t('auth.validation.validEmail');
         isValid = false;
       }
 
       if (!this.registerForm.password) {
-        this.registerErrors.password = 'Password is required';
+        this.registerErrors.password = this.$t('auth.validation.required', { field: this.$t('auth.register.password') });
         isValid = false;
       } else if (this.registerForm.password.length < 8) {
-        this.registerErrors.password = 'Password must be at least 8 characters';
+        this.registerErrors.password = this.$t('auth.validation.minLength', { field: this.$t('auth.register.password'), length: 8 });
         isValid = false;
       } else if (this.passwordScore < 2) {
-        this.registerErrors.password = 'Password is too weak';
+        this.registerErrors.password = this.$t('auth.validation.weakPassword');
         isValid = false;
       }
 
       if (this.registerForm.password !== this.registerForm.confirmPassword) {
-        this.registerErrors.confirmPassword = 'Passwords do not match';
+        this.registerErrors.confirmPassword = this.$t('auth.validation.passwordsMatch');
         isValid = false;
       }
 
       if (!this.registerForm.agreeTerms) {
-        this.registerErrors.agreeTerms = 'You must agree to the Terms and Privacy Policy';
+        this.registerErrors.agreeTerms = this.$t('auth.validation.agreeTerms');
         isValid = false;
       }
 
@@ -370,7 +388,13 @@ export default {
 
       this.passwordScore = Math.min(score, 4);
 
-      const strengthTexts = ['Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
+      const strengthTexts = [
+        this.$t('auth.passwordStrength.weak'),
+        this.$t('auth.passwordStrength.fair'),
+        this.$t('auth.passwordStrength.good'),
+        this.$t('auth.passwordStrength.strong'),
+        this.$t('auth.passwordStrength.veryStrong')
+      ];
       const strengthClasses = ['weak', 'fair', 'good', 'strong', 'very-strong'];
 
       this.passwordStrength = strengthTexts[Math.min(this.passwordScore, 4)];
@@ -390,48 +414,46 @@ export default {
         agreeTerms: '',
         general: ''
       };
+      this.error = null;
     },
-    handleLogin() {
+    async handleLogin() {
       if (!this.validateLoginForm()) return;
 
       this.loading = true;
+      this.error = null;
 
-      setTimeout(() => {
-        this.$auth.isAuthenticated = true;
-        this.$auth.user = {
-          name: 'John Doe',
-          email: this.loginForm.email
-        };
-        this.$auth.token = 'mock-jwt-token';
-
-        if (this.loginForm.remember) {
-          localStorage.setItem('auth_token', 'mock-jwt-token');
-          localStorage.setItem('user', JSON.stringify(this.$auth.user));
-        }
-
+      try {
+        await authService.login(this.loginForm.email, this.loginForm.password);
+        
+        // Redirect to the calendar page or to the requested route
+        const redirectPath = this.$route.query.redirect || '/calendar';
+        this.$router.push(redirectPath);
+      } catch (error) {
+        console.error('Login error:', error);
+        this.error = error.response?.data?.error || 'Login failed. Please check your credentials.';
         this.loading = false;
-        this.$router.push('/calendar');
-      }, 1500);
+      }
     },
-    handleRegister() {
+    async handleRegister() {
       if (!this.validateRegisterForm()) return;
 
       this.loading = true;
+      this.error = null;
 
-      setTimeout(() => {
-        this.$auth.isAuthenticated = true;
-        this.$auth.user = {
-          name: this.registerForm.name,
-          email: this.registerForm.email
-        };
-        this.$auth.token = 'mock-jwt-token';
-
-        localStorage.setItem('auth_token', 'mock-jwt-token');
-        localStorage.setItem('user', JSON.stringify(this.$auth.user));
-
-        this.loading = false;
+      try {
+        await authService.register(
+          this.registerForm.name,
+          this.registerForm.email,
+          this.registerForm.password
+        );
+        
+        // User will be logged in automatically after registration
         this.$router.push('/calendar');
-      }, 1500);
+      } catch (error) {
+        console.error('Registration error:', error);
+        this.error = error.response?.data?.error || 'Registration failed. Please try again.';
+        this.loading = false;
+      }
     }
   }
 }
@@ -497,6 +519,16 @@ export default {
   color: var(--color-text-secondary);
   margin-bottom: 2rem;
   font-size: 0.95rem;
+}
+
+.error-alert {
+  padding: 0.75rem;
+  margin-bottom: 1.5rem;
+  background-color: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border-radius: 8px;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  text-align: center;
 }
 
 .form-group {
@@ -686,20 +718,18 @@ export default {
 }
 
 .or-divider {
-  position: relative;
-  text-align: center;
-  margin: 1.5rem 0;
-  color: var(--color-text-secondary);
+  display: flex;
+    align-items: center;
+    margin: 2rem 0;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
 }
 
 .or-divider::before,
 .or-divider::after {
   content: "";
-  position: absolute;
-  top: 50%;
-  width: calc(50% - 3rem);
-  height: 1px;
-  background-color: var(--color-border);
+    flex: 1;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .or-divider::before {
@@ -711,11 +741,7 @@ export default {
 }
 
 .or-divider span {
-  display: inline-block;
   padding: 0 1rem;
-  background-color: var(--bg-gradient-start);
-  position: relative;
-  z-index: 1;
 }
 
 .light-theme .or-divider span {
