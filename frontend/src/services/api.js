@@ -52,7 +52,25 @@ export default {
   login(credentials) {
     return apiClient.post('/auth/login', credentials);
   },
-  
+  // Profile endpoints
+  getUserProfile(userId) {
+    return apiClient.get(`/profile/${userId}`);
+  },
+
+  updateProfile(userId, profileData) {
+    return apiClient.put(`/profile/${userId}`, profileData);
+  },
+
+  uploadAvatar(userId, formData) {
+    return apiClient.post(`/profile/${userId}/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  changePassword(userId, passwordData) {
+    return apiClient.post(`/profile/${userId}/change-password`, passwordData);
+  },
   getUserInfo(userId) {
     return apiClient.get(`/auth/user?userId=${userId}`);
   },

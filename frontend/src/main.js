@@ -11,6 +11,7 @@ import HomePage from './components/HomePage.vue';
 import CalendarPage from './components/CalendarPage.vue';
 import AchievementsPage from './components/AchievementsPage.vue';
 import AuthPage from './components/AuthPage.vue';
+import UserProfilePage from './components/UserProfilePage.vue';
 
 // Initialize auth service
 auth.init();
@@ -36,6 +37,12 @@ const routes = [
         path: '/',
         component: HomePage,
         meta: { title: 'Home - TaskMaster' }
+    },
+    {
+        path: '/profile',
+        component: UserProfilePage,
+        beforeEnter: requireAuth,
+        meta: { title: 'Profile - TaskMaster' }
     },
     {
         path: '/calendar',
