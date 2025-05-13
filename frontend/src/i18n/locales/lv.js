@@ -9,7 +9,8 @@ export default {
         about: 'Par mums',
         login: 'Pieslēgties',
         signup: 'Reģistrēties',
-        logout: 'Iziet'
+        logout: 'Iziet',
+        profile: 'Profils'
     },
 
     // Home Page
@@ -90,6 +91,11 @@ export default {
             taskDescription: 'Uzdevuma apraksts:',
             whatToDo: 'Kas jādara?',
             category: 'Kategorija:',
+            taskDuration: 'Uzdevuma ilgums:',
+            weeks: 'Nedēļas',
+            days: 'Dienas',
+            hours: 'Stundas',
+            minutes: 'Minūtes',
             saveTask: 'Saglabāt uzdevumu',
             saveChanges: 'Saglabāt izmaiņas',
             noTasks: 'Šajā dienā nav uzdevumu',
@@ -110,6 +116,10 @@ export default {
             earlyPlanner: 'Agrais plānotājs (Plānojiet uzdevumus nedēļu uz priekšu)',
             speedRunner: 'Ātrskrējējs (Pabeidziet 3 uzdevumus stundas laikā)',
             multitasker: 'Daudzuzdevumu veicējs (Pabeidziet uzdevumus 5 dažādās kategorijās)'
+        },
+        timer: {
+            expired: 'Taimeris beidzies',
+            timeOver: 'Laiks šim uzdevumam ir beidzies!'
         }
     },
 
@@ -118,7 +128,9 @@ export default {
         title: 'Jūsu Sasniegumi',
         subtitle: 'Sekojiet savai produktivitātes attīstībai un atbloķējiet apbalvojumus',
         stats: {
-            unlocked: 'Atbloķēti sasniegumi'
+            unlocked: 'Atbloķēti sasniegumi',
+            totalPoints: 'Kopējie punkti',
+            streak: 'Sasniegumu sērija'
         },
         search: 'Meklēt sasniegumus...',
         filters: {
@@ -134,13 +146,15 @@ export default {
         },
         status: {
             unlocked: 'Atbloķēts',
-            locked: 'Bloķēts'
+            locked: 'Bloķēts',
+            secret: 'Slepens'
         },
         empty: {
             title: 'Sasniegumi nav atrasti',
             subtitle: 'Mēģiniet pielāgot meklēšanas vai filtrēšanas kritērijus',
             reset: 'Atiestatīt filtrus'
-        }
+        },
+        unlocked: 'Sasniegums atbloķēts!'
     },
 
     // Auth Page
@@ -190,8 +204,52 @@ export default {
         }
     },
 
-     //About Page
-     about: {
+    // Profile Page
+    profile: {
+        title: 'Jūsu Profils',
+        subtitle: 'Pārvaldiet savu kontu un iestatījumus',
+        edit: 'Rediģēt profilu',
+        saveChanges: 'Saglabāt izmaiņas',
+        personalInfo: 'Personīgā informācija',
+        nameLabel: 'Jūsu vārds',
+        jobTitleLabel: 'Amats',
+        locationLabel: 'Atrašanās vieta',
+        bioTitle: 'Par mani',
+        noBio: 'Vēl nav pievienota informācija par sevi. Pastāstiet par sevi!',
+        bioPlaceholder: 'Uzrakstiet kaut ko par sevi...',
+        stats: 'Jūsu statistika',
+        totalTasks: 'Kopējie uzdevumi',
+        completedTasks: 'Pabeigtie uzdevumi',
+        achievements: 'Sasniegumi',
+        achievementPoints: 'Sasniegumu punkti',
+        completionRate: 'Pabeigšanas rādītājs',
+        preferences: 'Preferences',
+        theme: 'Tēma',
+        darkTheme: 'Tumša',
+        lightTheme: 'Gaiša',
+        security: 'Drošība',
+        changePassword: 'Mainīt paroli',
+        currentPassword: 'Pašreizējā parole',
+        newPassword: 'Jaunā parole',
+        confirmPassword: 'Apstipriniet jauno paroli',
+        currentPasswordPlaceholder: 'Ievadiet pašreizējo paroli',
+        newPasswordPlaceholder: 'Ievadiet jauno paroli',
+        confirmPasswordPlaceholder: 'Apstipriniet jauno paroli',
+        cancel: 'Atcelt',
+        updatePassword: 'Atjaunināt paroli',
+        errors: {
+            currentPasswordRequired: 'Nepieciešama pašreizējā parole',
+            newPasswordRequired: 'Nepieciešama jaunā parole',
+            passwordTooShort: 'Parolei jābūt vismaz 8 rakstzīmes garai',
+            passwordTooWeak: 'Parole ir pārāk vāja',
+            passwordsDoNotMatch: 'Paroles nesakrīt',
+            passwordChangeFailed: 'Neizdevās mainīt paroli. Lūdzu, mēģiniet vēlreiz.'
+        },
+        passwordChangeSuccess: 'Parole veiksmīgi mainīta!'
+    },
+
+    //About Page
+    about: {
         titleStart: 'Par mums',
         titleAccent: 'TaskMaster',
         description: 'TaskMaster ir jaudīgs uzdevumu pārvaldības rīks, kas izstrādāts, lai palīdzētu optimizēt jūsu laiku un palielinātu produktivitāti. Ar tādām funkcijām kā gudra plānošana, uzdevumu izsekošana un sasniegumu sistēma TaskMaster ļauj jums pārņemt kontroli pār saviem uzdevumiem un katru dienu sasniegt vairāk. Neatkarīgi no tā, vai pārvaldāt personīgos projektus vai profesionālās saistības, TaskMaster ir šeit, lai atbalstītu jūsu ceļu uz panākumiem.',
@@ -218,5 +276,4 @@ export default {
         ru: 'Русский',
         lv: 'Latviešu'
     },
-
 };

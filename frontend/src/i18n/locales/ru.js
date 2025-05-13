@@ -9,7 +9,8 @@ export default {
         about: 'О нас',
         login: 'Вход',
         signup: 'Регистрация',
-        logout: 'Выход'
+        logout: 'Выход',
+        profile: 'Профиль'
     },
 
     // Home Page
@@ -90,6 +91,11 @@ export default {
             taskDescription: 'Описание задачи:',
             whatToDo: 'Что нужно сделать?',
             category: 'Категория:',
+            taskDuration: 'Продолжительность задачи:',
+            weeks: 'Недели',
+            days: 'Дни',
+            hours: 'Часы',
+            minutes: 'Минуты',
             saveTask: 'Сохранить задачу',
             saveChanges: 'Сохранить изменения',
             noTasks: 'Нет задач на этот день',
@@ -110,6 +116,10 @@ export default {
             earlyPlanner: 'Планировщик (Спланируйте задачи на неделю вперед)',
             speedRunner: 'Скоростной бегун (Выполните 3 задачи за час)',
             multitasker: 'Многозадачность (Выполните задачи в 5 разных категориях)'
+        },
+        timer: {
+            expired: 'Таймер истек',
+            timeOver: 'Время для этой задачи истекло!'
         }
     },
 
@@ -118,7 +128,9 @@ export default {
         title: 'Ваши Достижения',
         subtitle: 'Отслеживайте свой путь к продуктивности и разблокируйте награды',
         stats: {
-            unlocked: 'Разблокировано достижений'
+            unlocked: 'Разблокировано достижений',
+            totalPoints: 'Всего очков',
+            streak: 'Серия достижений'
         },
         search: 'Поиск достижений...',
         filters: {
@@ -134,13 +146,15 @@ export default {
         },
         status: {
             unlocked: 'Разблокировано',
-            locked: 'Заблокировано'
+            locked: 'Заблокировано',
+            secret: 'Секрет'
         },
         empty: {
             title: 'Достижения не найдены',
             subtitle: 'Попробуйте изменить параметры поиска или фильтры',
             reset: 'Сбросить фильтры'
-        }
+        },
+        unlocked: 'Достижение разблокировано!'
     },
 
     // Auth Page
@@ -188,6 +202,50 @@ export default {
             strong: 'Сильный',
             veryStrong: 'Очень сильный'
         }
+    },
+
+    // Profile Page
+    profile: {
+        title: 'Ваш Профиль',
+        subtitle: 'Управляйте вашей учетной записью и настройками',
+        edit: 'Редактировать профиль',
+        saveChanges: 'Сохранить изменения',
+        personalInfo: 'Личная информация',
+        nameLabel: 'Ваше имя',
+        jobTitleLabel: 'Должность',
+        locationLabel: 'Местоположение',
+        bioTitle: 'О себе',
+        noBio: 'Информации о вас пока нет. Расскажите о себе!',
+        bioPlaceholder: 'Напишите немного о себе...',
+        stats: 'Ваша статистика',
+        totalTasks: 'Всего задач',
+        completedTasks: 'Выполненные задачи',
+        achievements: 'Достижения',
+        achievementPoints: 'Очки достижений',
+        completionRate: 'Показатель выполнения',
+        preferences: 'Настройки',
+        theme: 'Тема',
+        darkTheme: 'Темная',
+        lightTheme: 'Светлая',
+        security: 'Безопасность',
+        changePassword: 'Изменить пароль',
+        currentPassword: 'Текущий пароль',
+        newPassword: 'Новый пароль',
+        confirmPassword: 'Подтвердите новый пароль',
+        currentPasswordPlaceholder: 'Введите ваш текущий пароль',
+        newPasswordPlaceholder: 'Введите новый пароль',
+        confirmPasswordPlaceholder: 'Подтвердите ваш новый пароль',
+        cancel: 'Отмена',
+        updatePassword: 'Обновить пароль',
+        errors: {
+            currentPasswordRequired: 'Текущий пароль обязателен',
+            newPasswordRequired: 'Новый пароль обязателен',
+            passwordTooShort: 'Пароль должен содержать не менее 8 символов',
+            passwordTooWeak: 'Пароль слишком слабый',
+            passwordsDoNotMatch: 'Пароли не совпадают',
+            passwordChangeFailed: 'Не удалось изменить пароль. Пожалуйста, попробуйте снова.'
+        },
+        passwordChangeSuccess: 'Пароль успешно изменен!'
     },
 
     about: {

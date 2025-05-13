@@ -9,7 +9,8 @@ export default {
         about: 'About',
         login: 'Login',
         signup: 'Sign Up',
-        logout: 'Logout'
+        logout: 'Logout',
+        profile: 'Profile'
     },
 
     // Home Page
@@ -115,6 +116,10 @@ export default {
             earlyPlanner: 'Early Planner (Plan tasks a week in advance)',
             speedRunner: 'Speed Runner (Complete 3 tasks within an hour)',
             multitasker: 'Multitasker (Complete tasks in 5 different categories)'
+        },
+        timer: {
+            expired: 'Timer Expired',
+            timeOver: 'Time is up for this task!'
         }
     },
 
@@ -148,7 +153,8 @@ export default {
             title: 'No achievements found',
             subtitle: 'Try adjusting your search or filter criteria',
             reset: 'Reset Filters'
-        }
+        },
+        unlocked: 'Achievement Unlocked!'
     },
 
     // Auth Page
@@ -196,6 +202,50 @@ export default {
             strong: 'Strong',
             veryStrong: 'Very Strong'
         }
+    },
+
+    // Profile Page
+    profile: {
+        title: 'Your Profile',
+        subtitle: 'Manage your account and preferences',
+        edit: 'Edit Profile',
+        saveChanges: 'Save Changes',
+        personalInfo: 'Personal Information',
+        nameLabel: 'Your Name',
+        jobTitleLabel: 'Job Title',
+        locationLabel: 'Location',
+        bioTitle: 'Bio',
+        noBio: 'No bio added yet. Tell us about yourself!',
+        bioPlaceholder: 'Write something about yourself...',
+        stats: 'Your Statistics',
+        totalTasks: 'Total Tasks',
+        completedTasks: 'Completed Tasks',
+        achievements: 'Achievements',
+        achievementPoints: 'Achievement Points',
+        completionRate: 'Completion Rate',
+        preferences: 'Preferences',
+        theme: 'Theme',
+        darkTheme: 'Dark',
+        lightTheme: 'Light',
+        security: 'Security',
+        changePassword: 'Change Password',
+        currentPassword: 'Current Password',
+        newPassword: 'New Password',
+        confirmPassword: 'Confirm New Password',
+        currentPasswordPlaceholder: 'Enter your current password',
+        newPasswordPlaceholder: 'Enter a new password',
+        confirmPasswordPlaceholder: 'Confirm your new password',
+        cancel: 'Cancel',
+        updatePassword: 'Update Password',
+        errors: {
+            currentPasswordRequired: 'Current password is required',
+            newPasswordRequired: 'New password is required',
+            passwordTooShort: 'Password must be at least 8 characters',
+            passwordTooWeak: 'Password is too weak',
+            passwordsDoNotMatch: 'Passwords do not match',
+            passwordChangeFailed: 'Failed to change password. Please try again.'
+        },
+        passwordChangeSuccess: 'Password changed successfully!'
     },
 
     //About Page
