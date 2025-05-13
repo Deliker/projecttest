@@ -30,7 +30,25 @@ export default {
   register(userData) {
     return apiClient.post('/auth/register', userData);
   },
-  
+  uploadTaskAttachment(file, taskId) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('taskId', taskId);
+
+    return axios.post('/api/attachments/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  getTaskAttachments(taskId) {
+    return axios.get(`/api/attachments/task/${taskId}`);
+  },
+
+// Delete an attachment
+  deleteAttachment(attachmentId) {
+    return axios.delete(`/api/attachments/${attachmentId}`);
+  },
   login(credentials) {
     return apiClient.post('/auth/login', credentials);
   },

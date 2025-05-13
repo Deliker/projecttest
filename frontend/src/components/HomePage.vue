@@ -1,8 +1,5 @@
 <template>
   <div class="home-page">
-    <button @click="testConnection" class="btn btn-primary">
-      Проверить соединение с бэкендом
-    </button>
     <section class="hero-section">
       <div class="hero-content">
         <h1 class="hero-title">

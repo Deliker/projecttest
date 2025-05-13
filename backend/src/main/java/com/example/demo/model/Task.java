@@ -58,6 +58,7 @@ public class Task {
         this.day = day;
         this.duration = duration;
         this.user = user;
+        System.out.println("Task created");
     }
 
     // Getters and Setters

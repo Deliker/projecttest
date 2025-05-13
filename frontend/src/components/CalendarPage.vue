@@ -473,6 +473,7 @@
 
 <script>
 import { useI18n } from 'vue-i18n';
+import apiService from '../services/api'; // Import the API service directly
 
 export default {
   name: 'CalendarPage',
@@ -550,6 +551,8 @@ export default {
       notificationMessage: '',
       notificationProgress: 100,
       notificationTimer: null,
+      isLoading: false,
+      loadingError: null,
       months: [
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
@@ -563,11 +566,17 @@ export default {
       this.$nextTick(() => {
         this.updateDayAttributes();
       });
+      this.loadTasksForMonth();
     },
     selectedYear() {
       this.$nextTick(() => {
         this.updateDayAttributes();
       });
+      this.loadTasksForMonth();
+    },
+    // Watch for changes to tasks and save to localStorage
+    tasks: {
+      deep: true
     }
   },
 
@@ -608,6 +617,161 @@ export default {
   },
 
   methods: {
+    // Load tasks for the current month from the backend
+    async loadTasksForMonth() {
+      this.isLoading = true;
+      this.loadingError = null;
+
+      try {
+        const userId = localStorage.getItem('user_id');
+
+        // First, load tasks from localStorage (these will be shown immediately)
+        this.loadTasksFromLocalStorage();
+
+        // If no user ID, we'll just use the localStorage data
+        if (!userId) {
+          console.log('No user ID found, using localStorage tasks only');
+          this.isLoading = false;
+          return;
+        }
+
+        let response;
+        try {
+          // Then try to fetch from server to get the latest
+          response = await apiService.getTasksForMonth(userId, this.selectedYear, this.selectedMonth);
+        } catch (apiError) {
+          console.error('API error when fetching tasks:', apiError);
+          this.loadingError = 'Failed to connect to server. Using locally stored tasks.';
+          this.isLoading = false;
+          return;
+        }
+
+        // Parse response data safely
+        let tasksFromServer = [];
+        try {
+          tasksFromServer = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+          // Ensure tasksFromServer is an array
+          if (!Array.isArray(tasksFromServer)) {
+            console.error('Expected array of tasks but got:', tasksFromServer);
+            tasksFromServer = [];
+          }
+        } catch (parseError) {
+          console.error('Failed to parse tasks response:', parseError);
+          this.loadingError = 'Failed to process data from server. Using locally stored tasks.';
+          tasksFromServer = [];
+        }
+
+        // Create a temporary object to store processed tasks
+        const processedTasks = {};
+
+        // Process each task from the server
+        tasksFromServer.forEach(task => {
+          // Validate task data
+          if (!task || typeof task !== 'object' || !task.year || !task.month || !task.day) {
+            console.warn('Invalid task data:', task);
+            return;
+          }
+
+          const key = `${task.year}-${task.month}-${task.day}`;
+
+          if (!processedTasks[key]) {
+            processedTasks[key] = [];
+          }
+
+          // Add category color to each task
+          const category = this.taskCategories.find(c => c.id === task.category);
+          task.categoryColor = category ? category.color : '#757575';
+
+          // If the task has a timer that was previously running, initialize it
+          if (task.timerActive && task.timeRemaining !== null) {
+            this.initializeTimer(task);
+          }
+
+          processedTasks[key].push(task);
+        });
+
+        // For each day in the processedTasks, sort tasks by priority
+        Object.keys(processedTasks).forEach(key => {
+          processedTasks[key].sort((a, b) => {
+            const priorityOrder = { high: 1, medium: 2, low: 3 };
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+          });
+        });
+
+        // Merge with existing tasks
+        // We're selectively updating for the current month only to preserve tasks loaded from localStorage
+        for (const key in processedTasks) {
+          if (key.includes(`${this.selectedYear}-${this.selectedMonth}`)) {
+            this.tasks[key] = processedTasks[key];
+          }
+        }
+
+        // Save the merged tasks to localStorage
+        this.saveTasksToLocalStorage();
+
+      } catch (error) {
+        console.error('Failed to load tasks for month:', error);
+        this.loadingError = 'Failed to load tasks. Using locally stored tasks.';
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    // Initialize timer for a task
+    initializeTimer(task) {
+      if (!task.timeRemaining || task.timeRemaining <= 0) return;
+
+      task.timerActive = true;
+
+      this.timers[task.id] = setInterval(() => {
+        if (task.timeRemaining <= 0) {
+          clearInterval(this.timers[task.id]);
+          delete this.timers[task.id];
+          task.timerActive = false;
+          task.timeRemaining = 0;
+
+          this.showTimerExpiredNotification(task);
+          this.saveTaskToDatabase(task);
+        } else {
+          task.timeRemaining--;
+
+          // Save state to database every minute to avoid too many requests
+          if (task.timeRemaining % 60 === 0) {
+            this.saveTaskToDatabase(task);
+          }
+        }
+      }, 1000);
+    },
+
+    // Save task updates to the database
+    async saveTaskToDatabase(task) {
+      if (!task || !task.id) {
+        console.error('Invalid task data, cannot save to database:', task);
+        return false;
+      }
+
+      // Skip API calls for local-only tasks
+      if (task.id.toString().startsWith('local_') || task.isLocalOnly) {
+        console.log('Skipping database save for local-only task:', task.id);
+        // Even though we're not saving to DB, save to localStorage
+        this.saveTasksToLocalStorage();
+        return true; // Return true to prevent further error handling
+      }
+
+      try {
+        await apiService.updateTask(task.id, task);
+        console.log('Task updated in database:', task.id);
+        // Save to localStorage as well
+        this.saveTasksToLocalStorage();
+        return true;
+      } catch (error) {
+        console.error('Failed to update task in database:', error);
+        // Even though DB update failed, save to localStorage
+        this.saveTasksToLocalStorage();
+        return false;
+      }
+    },
+
     previousMonth() {
       if (this.selectedMonth > 0) {
         this.selectedMonth -= 1;
@@ -618,6 +782,7 @@ export default {
         }
       }
     },
+
     nextMonth() {
       if (this.selectedMonth < 11) {
         this.selectedMonth += 1;
@@ -628,21 +793,25 @@ export default {
         }
       }
     },
+
     isToday(day) {
       const today = new Date();
       return day === today.getDate() &&
           this.selectedMonth === today.getMonth() &&
           this.selectedYear === today.getFullYear();
     },
+
     isWeekend(day) {
       if (!day) return false;
       const date = new Date(this.selectedYear, this.selectedMonth, day);
       const dayOfWeek = date.getDay();
       return dayOfWeek === 0 || dayOfWeek === 6;
     },
+
     isDragTarget(day) {
       return this.isDragging && this.dragTargetDay === day;
     },
+
     openTaskModal() {
       const today = new Date();
       this.selectedDay = today.getDate();
@@ -650,10 +819,12 @@ export default {
       this.selectedYear = today.getFullYear();
       this.showModal = true;
     },
+
     closeTaskModal() {
       this.showModal = false;
       this.resetModalForm();
     },
+
     resetModalForm() {
       this.newTask = '';
       this.taskPriority = 'medium';
@@ -663,36 +834,40 @@ export default {
       this.taskDurationHours = 0;
       this.taskDurationMinutes = 0;
     },
+
     openTaskListModal(day) {
       this.selectedDay = day;
       this.showTaskListModal = true;
     },
+
     closeTaskListModal() {
       this.showTaskListModal = false;
     },
+
     openAddTaskForSelectedDay() {
       this.closeTaskListModal();
       this.openTaskModal();
     },
+
     toggleFilterDropdown() {
       this.showFilterDropdown = !this.showFilterDropdown;
     },
+
     clearFilters() {
       this.selectedFilters.categories = [];
       this.selectedFilters.priorities = [];
       this.searchQuery = '';
       this.showFilterDropdown = false;
     },
+
     getCategoryColor(categoryId) {
       const category = this.taskCategories.find(c => c.id === categoryId);
       return category ? category.color : '#757575';
     },
+
     getCategoryName(categoryId) {
       const category = this.taskCategories.find(c => c.id === categoryId);
       return category ? category.name : 'Other';
-    },
-    generateTaskId() {
-      return `task-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     },
 
     getDayTasks(day) {
@@ -787,7 +962,7 @@ export default {
           delete this.timers[taskId];
         }
         task.timerActive = false;
-        this.saveTasks();
+        this.saveTaskToDatabase(task);
         return;
       }
 
@@ -810,18 +985,17 @@ export default {
           document.dispatchEvent(timerCompletedEvent);
 
           this.showTimerExpiredNotification(task);
-
-          this.saveTasks();
+          this.saveTaskToDatabase(task);
         } else {
           task.timeRemaining--;
 
           if (task.timeRemaining % 60 === 0) {
-            this.saveTasks();
+            this.saveTaskToDatabase(task);
           }
         }
       }, 1000);
 
-      this.saveTasks();
+      this.saveTaskToDatabase(task);
     },
 
     showTimerExpiredNotification(task) {
@@ -838,69 +1012,8 @@ export default {
       this.timerNotificationMessage = '';
     },
 
-    addTask() {
-      if (this.selectedYear !== null && this.selectedMonth !== null && this.selectedDay !== null && this.newTask.trim()) {
-        const key = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
-        if (!this.tasks[key]) {
-          this.tasks[key] = [];
-        }
-
-        const durationMinutes = (
-            (parseInt(this.taskDurationWeeks) || 0) * 7 * 24 * 60 +
-            (parseInt(this.taskDurationDays) || 0) * 24 * 60 +
-            (parseInt(this.taskDurationHours) || 0) * 60 +
-            (parseInt(this.taskDurationMinutes) || 0)
-        );
-
-        const category = this.taskCategories.find(c => c.id === this.selectedCategory);
-        const newTask = {
-          id: this.generateTaskId(),
-          description: this.newTask.trim(),
-          priority: this.taskPriority,
-          category: this.selectedCategory,
-          categoryColor: category.color,
-          completed: false,
-          year: this.selectedYear,
-          month: this.selectedMonth,
-          day: this.selectedDay,
-          createdAt: new Date().toISOString(),
-          duration: durationMinutes,
-          timerActive: false,
-          timeRemaining: durationMinutes > 0 ? durationMinutes * 60 : null
-        };
-
-        this.tasks[key].push(newTask);
-
-        const taskCreatedEvent = new CustomEvent('task-created', {
-          detail: newTask
-        });
-        document.dispatchEvent(taskCreatedEvent);
-
-        setTimeout(() => {
-          this.tasks[key].sort((a, b) => {
-            const priorityOrder = {high: 1, medium: 2, low: 3};
-            return priorityOrder[a.priority] - priorityOrder[b.priority];
-          });
-          this.saveTasks();
-        }, 300);
-
-        this.closeTaskModal();
-        this.playAddAnimation();
-      } else {
-        const inputElement = document.getElementById('task-input');
-        if (inputElement) {
-          inputElement.classList.add('error-shake');
-          setTimeout(() => {
-            inputElement.classList.remove('error-shake');
-          }, 500);
-        }
-        alert('Please select a year, month, a day, and enter a task.');
-      }
-    },
-
     playAddAnimation() {
       const dayElement = document.querySelector(`.calendar-day[data-day="${this.selectedDay}"]`);
-
       if (dayElement) {
         dayElement.classList.add('task-added-pulse');
         setTimeout(() => {
@@ -908,8 +1021,403 @@ export default {
         }, 1000);
       }
     },
+    async addTask() {
+      // Basic validation
+      if (!this.newTask.trim()) {
+        const inputElement = document.getElementById('task-input');
+        if (inputElement) {
+          inputElement.classList.add('error-shake');
+          setTimeout(() => {
+            inputElement.classList.remove('error-shake');
+          }, 500);
+        }
+        alert('Please enter a task description.');
+        return;
+      }
 
-    editTask(task) {
+      if (this.selectedYear !== null && this.selectedMonth !== null && this.selectedDay !== null) {
+        try {
+          const userId = localStorage.getItem('user_id');
+          if (!userId) {
+            console.error('No user ID found in localStorage');
+            alert('Please log in to create tasks');
+            return;
+          }
+
+          // Prepare task data for the API
+          const taskData = {
+            description: this.newTask.trim(),
+            priority: this.taskPriority,
+            category: this.selectedCategory,
+            year: this.selectedYear,
+            month: this.selectedMonth,
+            day: this.selectedDay,
+            duration: (
+                (parseInt(this.taskDurationWeeks) || 0) * 7 * 24 * 60 +
+                (parseInt(this.taskDurationDays) || 0) * 24 * 60 +
+                (parseInt(this.taskDurationHours) || 0) * 60 +
+                (parseInt(this.taskDurationMinutes) || 0)
+            )
+          };
+
+          console.log('Sending task data:', taskData);
+
+          let response;
+          let createdTask;
+          let isLocalOnly = false;
+
+          try {
+            // Send task to backend
+            response = await apiService.createTask(taskData, userId);
+            console.log('Server response:', response);
+
+            // Try to parse the response data safely
+            try {
+              if (typeof response.data === 'string') {
+                // Fix malformed JSON if necessary - specifically the "user": issue
+                let responseText = response.data;
+                if (responseText.includes('"user":}')) {
+                  responseText = responseText.replace('"user":}', '"user":null}');
+                }
+                createdTask = JSON.parse(responseText);
+              } else {
+                createdTask = response.data;
+              }
+
+              // Validate the created task has required fields
+              if (!createdTask || !createdTask.id) {
+                throw new Error('Invalid task data returned from server');
+              }
+            } catch (parseError) {
+              console.error('Failed to parse response data:', parseError);
+              throw parseError; // Re-throw to be caught by the outer catch
+            }
+          } catch (apiError) {
+            console.error('API error when creating task:', apiError);
+            isLocalOnly = true;
+
+            // Create a fallback task with a temporary ID
+            createdTask = {
+              id: 'local_' + Date.now(),
+              description: taskData.description,
+              priority: taskData.priority,
+              category: taskData.category,
+              year: taskData.year,
+              month: taskData.month,
+              day: taskData.day,
+              duration: taskData.duration,
+              timeRemaining: taskData.duration > 0 ? taskData.duration * 60 : null,
+              timerActive: false,
+              isLocalOnly: true // Flag to indicate this is a local-only task
+            };
+
+            console.log('Created local-only task:', createdTask);
+          }
+
+          // Add to local state
+          const key = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
+          if (!this.tasks[key]) {
+            this.tasks[key] = [];
+          }
+
+          // Add category color
+          const category = this.taskCategories.find(c => c.id === this.selectedCategory);
+          createdTask.categoryColor = category.color;
+
+          this.tasks[key].push(createdTask);
+
+          // Save to localStorage
+          this.saveTasksToLocalStorage();
+
+          // Emit the task-created event
+          const taskCreatedEvent = new CustomEvent('task-created', {
+            detail: createdTask
+          });
+          document.dispatchEvent(taskCreatedEvent);
+
+          // Sort tasks by priority
+          this.tasks[key].sort((a, b) => {
+            const priorityOrder = {high: 1, medium: 2, low: 3};
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+          });
+
+          this.closeTaskModal();
+
+          // Add visual feedback
+          this.playAddAnimation();
+
+          if (isLocalOnly) {
+            alert('Task was saved locally but could not be saved to the server. It will persist across page reloads but may need to be synced later.');
+          }
+        } catch (error) {
+          console.error('Failed to create task:', error);
+          alert('Failed to create task. Please try again.');
+        }
+      } else {
+        alert('Please select a year, month, and a day.');
+      }
+    },
+
+    // Add these localStorage methods
+    saveTasksToLocalStorage() {
+      try {
+        localStorage.setItem('calendar_tasks', JSON.stringify(this.tasks));
+        console.log('Tasks saved to localStorage');
+      } catch (error) {
+        console.error('Failed to save tasks to localStorage:', error);
+      }
+    },
+
+    loadTasksFromLocalStorage() {
+      try {
+        const savedTasks = localStorage.getItem('calendar_tasks');
+        if (savedTasks) {
+          const parsedTasks = JSON.parse(savedTasks);
+
+          // Process the loaded tasks to add category colors and initialize timers
+          Object.keys(parsedTasks).forEach(key => {
+            parsedTasks[key].forEach(task => {
+              // Add category color to each task
+              const category = this.taskCategories.find(c => c.id === task.category);
+              task.categoryColor = category ? category.color : '#757575';
+
+              // If the task has a timer that was previously running, initialize it
+              if (task.timerActive && task.timeRemaining !== null) {
+                this.initializeTimer(task);
+              }
+            });
+
+            // Sort tasks by priority
+            parsedTasks[key].sort((a, b) => {
+              const priorityOrder = { high: 1, medium: 2, low: 3 };
+              return priorityOrder[a.priority] - priorityOrder[b.priority];
+            });
+          });
+
+          // Update the tasks object with the parsed tasks
+          this.tasks = parsedTasks;
+          console.log('Tasks loaded from localStorage');
+        }
+      } catch (error) {
+        console.error('Failed to load tasks from localStorage:', error);
+      }
+    },
+
+    async deleteTask(index) {
+      if (confirm(this.$t('calendar.modal.confirmDelete'))) {
+        const key = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
+
+        // Verify that filteredTasksForSelectedDay has the index
+        if (index >= this.filteredTasksForSelectedDay.length) {
+          console.error('Invalid task index:', index);
+          alert('Could not delete task: Invalid task index');
+          return;
+        }
+
+        const taskId = this.filteredTasksForSelectedDay[index].id;
+        const actualIndex = this.tasks[key].findIndex(task => task.id === taskId);
+
+        if (actualIndex !== -1) {
+          try {
+            const task = this.tasks[key][actualIndex];
+            console.log('Attempting to delete task with ID:', task.id);
+
+            // Stop timer if active
+            if (task.timerActive && this.timers[task.id]) {
+              clearInterval(this.timers[task.id]);
+              delete this.timers[task.id];
+            }
+
+            // Check if this is a local-only task (has a local_ prefix or isLocalOnly flag)
+            const isLocalTask = task.id.toString().startsWith('local_') || task.isLocalOnly;
+
+            if (!isLocalTask) {
+              try {
+                // Only try to delete from backend if it's not a local-only task
+                const userId = localStorage.getItem('user_id');
+                if (!userId) {
+                  console.error('No user ID found in localStorage');
+                  alert('Please log in to delete tasks');
+                  return;
+                }
+
+                // Make the API call with both taskId and userId
+                console.log('Calling deleteTask API with taskId:', task.id, 'and userId:', userId);
+                await apiService.deleteTask(task.id, userId);
+                console.log('Task deleted successfully from backend');
+              } catch (apiError) {
+                console.error('API error when deleting task:', apiError);
+                console.error('Error details:', apiError.response ? apiError.response.data : 'No response data');
+                console.log('Continuing with UI update despite API error');
+              }
+            } else {
+              console.log('Skipping API call for local-only task');
+            }
+
+            // Always delete from UI
+            const taskElement = document.querySelector(`.task-item:nth-child(${index + 1})`);
+            if (taskElement) {
+              taskElement.classList.add('deleting');
+
+              setTimeout(() => {
+                this.tasks[key].splice(actualIndex, 1);
+
+                if (this.tasks[key].length === 0) {
+                  delete this.tasks[key];
+                  this.closeTaskListModal();
+                }
+
+                // Save changes to localStorage
+                this.saveTasksToLocalStorage();
+              }, 300);
+            } else {
+              this.tasks[key].splice(actualIndex, 1);
+
+              if (this.tasks[key].length === 0) {
+                delete this.tasks[key];
+                this.closeTaskListModal();
+              }
+
+              // Save changes to localStorage
+              this.saveTasksToLocalStorage();
+            }
+          } catch (error) {
+            console.error('Failed to delete task:', error);
+            alert('Failed to delete task. Please try again.');
+          }
+        } else {
+          console.error('Task not found in local state:', taskId);
+          alert('Could not find task to delete. Please refresh the page and try again.');
+        }
+      }
+    },
+
+    async finishSpecificTask(index) {
+      const key = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
+
+      // Validate that tasks for this key exist
+      if (!this.tasks[key]) {
+        console.error('No tasks found for date:', key);
+        alert('Could not complete task: No tasks found for this date');
+        return;
+      }
+
+      // Validate index is within range
+      if (index >= this.filteredTasksForSelectedDay.length) {
+        console.error('Invalid task index:', index);
+        alert('Could not complete task: Invalid task index');
+        return;
+      }
+
+      const taskId = this.filteredTasksForSelectedDay[index].id;
+      const actualIndex = this.tasks[key].findIndex(task => task.id === taskId);
+
+      if (actualIndex !== -1) {
+        try {
+          const task = this.tasks[key][actualIndex];
+          const userId = localStorage.getItem('user_id');
+
+          if (!userId) {
+            console.error('No user ID found in localStorage');
+            alert('Please log in to complete tasks');
+            return;
+          }
+
+          // Stop timer if active
+          if (task.timerActive && this.timers[task.id]) {
+            clearInterval(this.timers[task.id]);
+            delete this.timers[task.id];
+          }
+
+          // Check if this is a local-only task
+          const isLocalTask = task.id.toString().startsWith('local_') || task.isLocalOnly;
+
+          if (!isLocalTask) {
+            try {
+              // Only try to complete on backend if it's not a local-only task
+              console.log('Sending completeTask request with task ID:', task.id, 'and user ID:', userId);
+              const response = await apiService.completeTask(task.id, userId);
+              console.log('Task completed successfully on backend, response:', response);
+            } catch (apiError) {
+              console.error('API error when completing task:', apiError);
+              console.error('Error details:', apiError.response ? apiError.response.data : 'No response data');
+              console.log('Continuing with UI update despite API error');
+            }
+          } else {
+            console.log('Skipping API call for local-only task');
+          }
+
+          // Always update UI
+          const taskElement = document.querySelector(`.task-item:nth-child(${index + 1})`);
+          if (taskElement) {
+            taskElement.classList.add('completing');
+
+            setTimeout(() => {
+              const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
+
+              const taskCompletedEvent = new CustomEvent('task-completed', {
+                detail: completedTask
+              });
+              document.dispatchEvent(taskCompletedEvent);
+
+              if (this.tasks[key].length === 0) {
+                delete this.tasks[key];
+                this.closeTaskListModal();
+              }
+
+              // Save changes to localStorage
+              this.saveTasksToLocalStorage();
+
+              this.showCompletionConfetti();
+            }, 500);
+          } else {
+            const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
+
+            const taskCompletedEvent = new CustomEvent('task-completed', {
+              detail: completedTask
+            });
+            document.dispatchEvent(taskCompletedEvent);
+
+            if (this.tasks[key].length === 0) {
+              delete this.tasks[key];
+              this.closeTaskListModal();
+            }
+
+            // Save changes to localStorage
+            this.saveTasksToLocalStorage();
+
+            this.showCompletionConfetti();
+          }
+        } catch (error) {
+          console.error('Failed to complete task:', error);
+          alert('Failed to complete task. Please try again.');
+        }
+      } else {
+        console.error('Task not found in local state:', taskId);
+        alert('Could not find task to complete. Please refresh the page and try again.');
+      }
+    },
+
+    showCompletionConfetti() {
+      this.notificationMessage = "Task completed!";
+      this.showNotification = true;
+      this.notificationProgress = 100;
+
+      this.notificationTimer = setInterval(() => {
+        this.notificationProgress -= 2;
+        if (this.notificationProgress <= 0) {
+          clearInterval(this.notificationTimer);
+          this.showNotification = false;
+        }
+      }, 50);
+
+      setTimeout(() => {
+        clearInterval(this.notificationTimer);
+        this.showNotification = false;
+      }, 3000);
+    },
+
+    async editTask(task) {
       const key = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
       const taskId = task.id;
       const actualIndex = this.tasks[key].findIndex(t => t.id === taskId);
@@ -941,7 +1449,7 @@ export default {
       this.showEditModal = false;
     },
 
-    saveEditedTask() {
+    async saveEditedTask() {
       if (!this.editTaskData.description.trim()) {
         const inputElement = document.getElementById('edit-task-input');
         if (inputElement) {
@@ -964,193 +1472,113 @@ export default {
           (parseInt(this.editTaskData.durationMinutes) || 0)
       );
 
-      if (oldKey !== newKey) {
-        if (!this.tasks[newKey]) {
-          this.tasks[newKey] = [];
-        }
+      try {
+        if (oldKey !== newKey) {
+          if (!this.tasks[newKey]) {
+            this.tasks[newKey] = [];
+          }
 
-        const taskToMove = this.tasks[oldKey][this.editTaskData.index];
+          const taskToMove = this.tasks[oldKey][this.editTaskData.index];
 
-        if (taskToMove.timerActive && this.timers[taskToMove.id]) {
-          clearInterval(this.timers[taskToMove.id]);
-          delete this.timers[taskToMove.id];
-          taskToMove.timerActive = false;
-        }
+          if (taskToMove.timerActive && this.timers[taskToMove.id]) {
+            clearInterval(this.timers[taskToMove.id]);
+            delete this.timers[taskToMove.id];
+            taskToMove.timerActive = false;
+          }
 
-        this.tasks[oldKey].splice(this.editTaskData.index, 1);
+          // Update task properties
+          taskToMove.description = this.editTaskData.description;
+          taskToMove.priority = this.editTaskData.priority;
+          taskToMove.category = this.editTaskData.category;
+          taskToMove.year = this.editTaskData.year;
+          taskToMove.month = this.editTaskData.month;
+          taskToMove.day = this.editTaskData.day;
+          taskToMove.duration = durationMinutes;
 
-        const category = this.taskCategories.find(c => c.id === this.editTaskData.category);
-        taskToMove.description = this.editTaskData.description;
-        taskToMove.priority = this.editTaskData.priority;
-        taskToMove.category = this.editTaskData.category;
-        taskToMove.categoryColor = category.color;
-        taskToMove.year = this.editTaskData.year;
-        taskToMove.month = this.editTaskData.month;
-        taskToMove.day = this.editTaskData.day;
+          if (taskToMove.timeRemaining !== null) {
+            taskToMove.timeRemaining = durationMinutes * 60;
+          }
 
-        taskToMove.duration = durationMinutes;
+          // Check if this is a local-only task
+          const isLocalTask = taskToMove.id.toString().startsWith('local_') || taskToMove.isLocalOnly;
 
-        if (taskToMove.timeRemaining !== null) {
-          taskToMove.timeRemaining = durationMinutes * 60;
-        }
+          if (!isLocalTask) {
+            try {
+              // Save changes to database
+              await apiService.updateTask(taskToMove.id, taskToMove);
+            } catch (apiError) {
+              console.error('API error when updating task:', apiError);
+              // Continue with UI update regardless of API errors
+            }
+          } else {
+            console.log('Skipping API call for local-only task');
+          }
 
-        setTimeout(() => {
+          // Update local state
+          this.tasks[oldKey].splice(this.editTaskData.index, 1);
+          const category = this.taskCategories.find(c => c.id === this.editTaskData.category);
+          taskToMove.categoryColor = category.color;
+
           this.tasks[newKey].push(taskToMove);
           this.tasks[newKey].sort((a, b) => {
             const priorityOrder = {high: 1, medium: 2, low: 3};
             return priorityOrder[a.priority] - priorityOrder[b.priority];
           });
-        }, 300);
 
-        if (this.tasks[oldKey].length === 0) {
-          delete this.tasks[oldKey];
-          this.closeTaskListModal();
-        }
-      } else {
-        const category = this.taskCategories.find(c => c.id === this.editTaskData.category);
-        const task = this.tasks[oldKey][this.editTaskData.index];
-
-        if (task.timerActive && this.timers[task.id]) {
-          clearInterval(this.timers[task.id]);
-          delete this.timers[task.id];
-          task.timerActive = false;
-        }
-
-        task.description = this.editTaskData.description;
-        task.priority = this.editTaskData.priority;
-        task.category = this.editTaskData.category;
-        task.categoryColor = category.color;
-
-        task.duration = durationMinutes;
-
-        if (task.timeRemaining !== null) {
-          task.timeRemaining = durationMinutes * 60;
-        }
-
-        this.tasks[oldKey].sort((a, b) => {
-          const priorityOrder = {high: 1, medium: 2, low: 3};
-          return priorityOrder[a.priority] - priorityOrder[b.priority];
-        });
-      }
-
-      this.closeEditModal();
-      this.saveTasks();
-    },
-
-    deleteTask(index) {
-      if (confirm(this.$t('calendar.modal.confirmDelete'))) {
-        const key = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
-
-        const taskId = this.filteredTasksForSelectedDay[index].id;
-        const actualIndex = this.tasks[key].findIndex(task => task.id === taskId);
-
-        if (actualIndex !== -1) {
-          const task = this.tasks[key][actualIndex];
+          if (this.tasks[oldKey].length === 0) {
+            delete this.tasks[oldKey];
+            this.closeTaskListModal();
+          }
+        } else {
+          const task = this.tasks[oldKey][this.editTaskData.index];
 
           if (task.timerActive && this.timers[task.id]) {
             clearInterval(this.timers[task.id]);
             delete this.timers[task.id];
+            task.timerActive = false;
           }
 
-          const taskElement = document.querySelector(`.task-item:nth-child(${index + 1})`);
-          if (taskElement) {
-            taskElement.classList.add('deleting');
+          // Update task properties
+          task.description = this.editTaskData.description;
+          task.priority = this.editTaskData.priority;
+          task.category = this.editTaskData.category;
+          task.duration = durationMinutes;
 
-            setTimeout(() => {
-              this.tasks[key].splice(actualIndex, 1);
+          if (task.timeRemaining !== null) {
+            task.timeRemaining = durationMinutes * 60;
+          }
 
-              if (this.tasks[key].length === 0) {
-                delete this.tasks[key];
-                this.closeTaskListModal();
-              }
+          // Update category color
+          const category = this.taskCategories.find(c => c.id === this.editTaskData.category);
+          task.categoryColor = category.color;
 
-              this.saveTasks();
-            }, 300);
-          } else {
-            this.tasks[key].splice(actualIndex, 1);
+          // Check if this is a local-only task
+          const isLocalTask = task.id.toString().startsWith('local_') || task.isLocalOnly;
 
-            if (this.tasks[key].length === 0) {
-              delete this.tasks[key];
-              this.closeTaskListModal();
+          if (!isLocalTask) {
+            try {
+              // Save changes to database
+              await apiService.updateTask(task.id, task);
+            } catch (apiError) {
+              console.error('API error when updating task:', apiError);
+              // Continue with UI update regardless of API errors
             }
-
-            this.saveTasks();
-          }
-        }
-      }
-    },
-
-    finishSpecificTask(index) {
-      const key = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
-      if (this.tasks[key] && index < this.filteredTasksForSelectedDay.length) {
-        const taskId = this.filteredTasksForSelectedDay[index].id;
-        const actualIndex = this.tasks[key].findIndex(task => task.id === taskId);
-
-        if (actualIndex !== -1) {
-          const task = this.tasks[key][actualIndex];
-
-          if (task.timerActive && this.timers[task.id]) {
-            clearInterval(this.timers[task.id]);
-            delete this.timers[task.id];
-          }
-
-          const taskElement = document.querySelector(`.task-item:nth-child(${index + 1})`);
-          if (taskElement) {
-            taskElement.classList.add('completing');
-
-            setTimeout(() => {
-              const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
-
-              const taskCompletedEvent = new CustomEvent('task-completed', {
-                detail: completedTask
-              });
-              document.dispatchEvent(taskCompletedEvent);
-
-              if (this.tasks[key].length === 0) {
-                delete this.tasks[key];
-                this.closeTaskListModal();
-              }
-
-              this.saveTasks();
-              this.showCompletionConfetti();
-            }, 500);
           } else {
-            const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
-
-            const taskCompletedEvent = new CustomEvent('task-completed', {
-              detail: completedTask
-            });
-            document.dispatchEvent(taskCompletedEvent);
-
-            if (this.tasks[key].length === 0) {
-              delete this.tasks[key];
-              this.closeTaskListModal();
-            }
-
-            this.saveTasks();
-            this.showCompletionConfetti();
+            console.log('Skipping API call for local-only task');
           }
+
+          // Sort tasks by priority
+          this.tasks[oldKey].sort((a, b) => {
+            const priorityOrder = {high: 1, medium: 2, low: 3};
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+          });
         }
+
+        this.closeEditModal();
+      } catch (error) {
+        console.error('Failed to update task:', error);
+        alert('Failed to update task. Please try again.');
       }
-    },
-
-    showCompletionConfetti() {
-      this.notificationMessage = "Task completed!";
-      this.showNotification = true;
-      this.notificationProgress = 100;
-
-      this.notificationTimer = setInterval(() => {
-        this.notificationProgress -= 2;
-        if (this.notificationProgress <= 0) {
-          clearInterval(this.notificationTimer);
-          this.showNotification = false;
-        }
-      }, 50);
-
-      setTimeout(() => {
-        clearInterval(this.notificationTimer);
-        this.showNotification = false;
-      }, 3000);
     },
 
     onDragStart(event, task, day) {
@@ -1215,7 +1643,7 @@ export default {
       window.removeEventListener('mousemove', this.trackMousePosition);
     },
 
-    onDrop(event, targetDay) {
+    async onDrop(event, targetDay) {
       event.preventDefault();
       const taskId = event.dataTransfer.getData('taskId');
 
@@ -1232,80 +1660,94 @@ export default {
         return;
       }
 
-      if (!this.tasks[targetKey]) {
-        this.tasks[targetKey] = [];
-      }
-
-      const taskIndex = this.tasks[sourceKey].findIndex(t => t.id === this.draggedTask.id);
-
-      if (taskIndex !== -1) {
-        const task = this.tasks[sourceKey][taskIndex];
-
-        if (task.timerActive && this.timers[task.id]) {
-          clearInterval(this.timers[task.id]);
-          delete this.timers[task.id];
-          task.timerActive = false;
+      try {
+        if (!this.tasks[targetKey]) {
+          this.tasks[targetKey] = [];
         }
 
-        const sourceElement = event.target.closest('.calendar-day');
-        const targetElement = document.querySelector(`.calendar-day[data-day="${targetDay}"]`);
+        const taskIndex = this.tasks[sourceKey].findIndex(t => t.id === this.draggedTask.id);
 
-        if (sourceElement && targetElement) {
-          sourceElement.classList.add('task-drag-source');
-          targetElement.classList.add('task-drag-target');
+        if (taskIndex !== -1) {
+          const task = this.tasks[sourceKey][taskIndex];
 
-          setTimeout(() => {
-            sourceElement.classList.remove('task-drag-source');
-            targetElement.classList.remove('task-drag-target');
+          // Stop timer if active
+          if (task.timerActive && this.timers[task.id]) {
+            clearInterval(this.timers[task.id]);
+            delete this.timers[task.id];
+            task.timerActive = false;
+          }
 
+          // Update task date in memory
+          task.year = this.selectedYear;
+          task.month = this.selectedMonth;
+          task.day = targetDay;
+
+          // Check if this is a local-only task
+          const isLocalTask = task.id.toString().startsWith('local_') || task.isLocalOnly;
+
+          if (!isLocalTask) {
+            try {
+              // Update task in database
+              await apiService.updateTask(task.id, task);
+            } catch (apiError) {
+              console.error('API error when updating task:', apiError);
+              // Continue with UI update regardless of API errors
+            }
+          } else {
+            console.log('Skipping API call for local-only task during drag and drop');
+          }
+
+          const sourceElement = event.target.closest('.calendar-day');
+          const targetElement = document.querySelector(`.calendar-day[data-day="${targetDay}"]`);
+
+          if (sourceElement && targetElement) {
+            sourceElement.classList.add('task-drag-source');
+            targetElement.classList.add('task-drag-target');
+
+            setTimeout(() => {
+              sourceElement.classList.remove('task-drag-source');
+              targetElement.classList.remove('task-drag-target');
+
+              // Move task in local state
+              const movedTask = this.tasks[sourceKey].splice(taskIndex, 1)[0];
+              this.tasks[targetKey].push(movedTask);
+
+              // Sort tasks by priority
+              this.tasks[targetKey].sort((a, b) => {
+                const priorityOrder = { high: 1, medium: 2, low: 3 };
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
+              });
+
+              // Clean up empty arrays
+              if (this.tasks[sourceKey].length === 0) {
+                delete this.tasks[sourceKey];
+                this.closeTaskListModal();
+              }
+            }, 300);
+          } else {
+            // Move task in local state
             const movedTask = this.tasks[sourceKey].splice(taskIndex, 1)[0];
-
-            movedTask.year = this.selectedYear;
-            movedTask.month = this.selectedMonth;
-            movedTask.day = targetDay;
-
             this.tasks[targetKey].push(movedTask);
 
+            // Sort tasks by priority
             this.tasks[targetKey].sort((a, b) => {
               const priorityOrder = { high: 1, medium: 2, low: 3 };
               return priorityOrder[a.priority] - priorityOrder[b.priority];
             });
 
+            // Clean up empty arrays
             if (this.tasks[sourceKey].length === 0) {
               delete this.tasks[sourceKey];
               this.closeTaskListModal();
             }
-
-            this.saveTasks();
-          }, 300);
-        } else {
-          const movedTask = this.tasks[sourceKey].splice(taskIndex, 1)[0];
-
-          movedTask.year = this.selectedYear;
-          movedTask.month = this.selectedMonth;
-          movedTask.day = targetDay;
-
-          this.tasks[targetKey].push(movedTask);
-
-          this.tasks[targetKey].sort((a, b) => {
-            const priorityOrder = { high: 1, medium: 2, low: 3 };
-            return priorityOrder[a.priority] - priorityOrder[b.priority];
-          });
-
-          if (this.tasks[sourceKey].length === 0) {
-            delete this.tasks[sourceKey];
-            this.closeTaskListModal();
           }
-
-          this.saveTasks();
         }
+      } catch (error) {
+        console.error('Failed to move task:', error);
+        alert('Failed to move task. Please try again.');
       }
 
       this.onDragEnd();
-    },
-
-    saveTasks() {
-      localStorage.setItem('tasks', JSON.stringify(this.tasks));
     },
 
     updateDayAttributes() {
@@ -1320,32 +1762,6 @@ export default {
       }, 100);
     },
 
-    migrateTasksFormat() {
-      const updatedTasks = {};
-      const currentYear = new Date().getFullYear();
-
-      Object.keys(this.tasks).forEach(oldKey => {
-        if (oldKey.split('-').length === 2) {
-          const [month, day] = oldKey.split('-').map(Number);
-          const newKey = `${currentYear}-${month}-${day}`;
-
-          const tasksWithYear = this.tasks[oldKey].map(task => ({
-            ...task,
-            year: currentYear,
-            month: month,
-            day: day
-          }));
-
-          updatedTasks[newKey] = tasksWithYear;
-        } else {
-          updatedTasks[oldKey] = this.tasks[oldKey];
-        }
-      });
-
-      this.tasks = updatedTasks;
-      this.saveTasks();
-    },
-
     handleOutsideClick(event) {
       const dropdown = document.querySelector('.filter-dropdown');
       if (dropdown && !dropdown.contains(event.target) && this.showFilterDropdown) {
@@ -1354,33 +1770,23 @@ export default {
     }
   },
 
-  mounted() {
-    const savedTasks = localStorage.getItem('tasks');
-    if (savedTasks) {
-      this.tasks = JSON.parse(savedTasks);
+  async mounted() {
+    try {
+      // First load from localStorage
+      this.loadTasksFromLocalStorage();
 
-      this.migrateTasksFormat();
-
-      Object.values(this.tasks).forEach(tasklist => {
-        tasklist.forEach(task => {
-          if (!task.id) {
-            task.id = this.generateTaskId();
-          }
-
-          if (task.timerActive && task.timeRemaining > 0) {
-            this.toggleTimer(task);
-          }
-        });
-      });
+      // Then load from server
+      await this.loadTasksForMonth();
+      this.updateDayAttributes();
+    } catch (error) {
+      console.error('Error initializing calendar page:', error);
     }
 
-    this.updateDayAttributes();
-
     document.addEventListener('click', this.handleOutsideClick);
-
     window.addEventListener('mousemove', this.trackMousePosition);
     window.addEventListener('mouseup', this.onDragEnd);
 
+    // Listen for achievement-unlocked events
     document.addEventListener('achievement-unlocked', (event) => {
       const achievementData = event.detail;
       this.notificationMessage = `${achievementData.title} - ${achievementData.description}`;
@@ -1411,6 +1817,7 @@ export default {
     window.removeEventListener('mousemove', this.trackMousePosition);
     window.removeEventListener('mouseup', this.onDragEnd);
 
+    // Clear all active timers
     Object.keys(this.timers).forEach(timerId => {
       clearInterval(this.timers[timerId]);
     });
