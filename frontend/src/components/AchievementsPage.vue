@@ -437,15 +437,6 @@ export default {
   animation: pulse 1.5s infinite alternate;
 }
 
-@keyframes pulse {
-  from {
-    transform: scale(1);
-  }
-  to {
-    transform: scale(1.1);
-  }
-}
-
 .points-value, .streak-value {
   font-size: 2.5rem;
   font-weight: bold;
@@ -463,32 +454,6 @@ export default {
 .search-box {
   position: relative;
   max-width: 300px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  color: var(--color-text);
-  font-size: 0.9rem;
-  transition: all var(--transition-medium);
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  background: var(--color-card-bg-hover);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-}
-
-.search-icon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-secondary);
 }
 
 .filter-container {
@@ -786,10 +751,6 @@ export default {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
-.light-theme .achievement-notification {
-  background: rgba(255, 255, 255, 0.9);
-}
-
 .achievement-notification-content {
   display: flex;
   gap: 1rem;
@@ -835,30 +796,6 @@ export default {
   font-weight: 600;
 }
 
-.notification-close {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  position: absolute;
-  top: -0.5rem;
-  right: -0.5rem;
-  cursor: pointer;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-}
-
-.notification-close:hover {
-  color: var(--color-text);
-  background: rgba(255, 255, 255, 0.1);
-  transform: rotate(90deg);
-}
-
-/* Debug панель (только для разработки) */
 .debug-panel {
   position: fixed;
   bottom: 1rem;
@@ -888,7 +825,6 @@ export default {
   color: white;
 }
 
-/* Animations */
 @keyframes fadeSlideDown {
   from {
     opacity: 0;
@@ -919,15 +855,6 @@ export default {
   to {
     opacity: 1;
     transform: translateX(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
   }
 }
 
@@ -966,7 +893,6 @@ export default {
   opacity: 0;
 }
 
-/* Media Queries */
 @media (max-width: 1024px) {
   .achievements-page {
     padding: 1.5rem;

@@ -3,6 +3,10 @@ import App from './App.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import i18n from './i18n';
 
+// Import CSS
+
+import './assets/styles/main.css';
+
 // Import services
 import auth from './services/auth';
 
@@ -12,6 +16,7 @@ import CalendarPage from './components/CalendarPage.vue';
 import AchievementsPage from './components/AchievementsPage.vue';
 import AuthPage from './components/AuthPage.vue';
 import UserProfilePage from './components/UserProfilePage.vue';
+
 
 // Initialize auth service
 auth.init();

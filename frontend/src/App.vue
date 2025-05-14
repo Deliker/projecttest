@@ -329,86 +329,10 @@ export default {
 </script>
 
 <style>
-:root {
-  --color-primary: #6366f1;
-  --color-primary-light: #818cf8;
-  --color-primary-dark: #4f46e5;
-  --color-secondary: #06b6d4;
-  --color-accent: #f472b6;
-
-  --bg-gradient-start: #000000;
-  --bg-gradient-end: #202020;
-  --color-text: #ffffff;
-  --color-text-secondary: rgba(255, 255, 255, 0.7);
-  --color-border: rgba(255, 255, 255, 0.1);
-  --color-card-bg: rgba(255, 255, 255, 0.05);
-  --color-card-bg-hover: rgba(255, 255, 255, 0.08);
-  --box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-
-  --header-bg: #000000;
-  --header-border: #222;
-  --nav-item-color: #808080;
-  --nav-item-hover-bg: #222222;
-
-  --transition-fast: 0.2s ease;
-  --transition-medium: 0.3s ease;
-  --transition-slow: 0.5s ease;
-
-  --btn-primary-bg: #ffffff;
-  --btn-primary-color: #000000;
-  --btn-primary-hover-bg: #f0f0f0;
-
-  --btn-secondary-bg: transparent;
-  --btn-secondary-color: #ffffff;
-  --btn-secondary-border: #333;
-  --btn-secondary-hover-bg: #222222;
-}
-
-.light-theme {
-  --bg-gradient-start: #ffffff;
-  --bg-gradient-end: #f5f5f5;
-  --color-text: #333333;
-  --color-text-secondary: rgba(0, 0, 0, 0.7);
-  --color-border: rgba(0, 0, 0, 0.1);
-  --color-card-bg: rgba(0, 0, 0, 0.03);
-  --color-card-bg-hover: rgba(0, 0, 0, 0.05);
-  --box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-
-  --header-bg: #ffffff;
-  --header-border: #eaeaea;
-  --nav-item-color: #666666;
-  --nav-item-hover-bg: #f5f5f5;
-
-  --btn-primary-bg: var(--color-primary);
-  --btn-primary-color: #ffffff;
-  --btn-primary-hover-bg: var(--color-primary-dark);
-
-  --btn-secondary-bg: transparent;
-  --btn-secondary-color: var(--color-primary);
-  --btn-secondary-border: var(--color-primary-light);
-  --btn-secondary-hover-bg: rgba(99, 102, 241, 0.05);
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body, html {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.6;
+/* Component-specific styles */
+.main-container {
+  min-height: 100vh;
   overflow-x: hidden;
-}
-
-body.nav-open {
-  overflow: hidden;
 }
 
 .header {
@@ -420,7 +344,6 @@ body.nav-open {
   z-index: 100;
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--header-border);
-  transition: background-color var(--transition-medium);
 }
 
 .header-content {
@@ -519,27 +442,6 @@ body.nav-open {
   margin-left: 1rem;
 }
 
-.user-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.btn-profile {
-  background: var(--color-primary);
-  color: white;
-}
-
-.btn-profile:hover {
-  background: var(--color-primary-dark);
-  transform: translateY(-2px);
-}
-
-@media (max-width: 640px) {
-  .user-actions {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-}
 .theme-toggle {
   background: transparent;
   border: none;
@@ -559,7 +461,6 @@ body.nav-open {
   transform: rotate(15deg);
 }
 
-/* Стили для селектора языка */
 .language-selector {
   position: relative;
   margin-left: 1rem;
@@ -602,7 +503,6 @@ body.nav-open {
   box-shadow: var(--box-shadow);
   z-index: 120;
   overflow: hidden;
-  animation: fadeIn var(--transition-fast) forwards;
 }
 
 .language-option {
@@ -640,45 +540,6 @@ body.nav-open {
   gap: 1rem;
 }
 
-.btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all var(--transition-medium);
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.btn-login {
-  background: var(--btn-secondary-bg);
-  color: var(--btn-secondary-color);
-  border: 1px solid var(--btn-secondary-border);
-}
-
-.btn-login:hover {
-  background: var(--btn-secondary-hover-bg);
-  transform: translateY(-1px);
-}
-
-.btn-register {
-  background: var(--btn-primary-bg);
-  color: var(--btn-primary-color);
-}
-
-.btn-register:hover {
-  background: var(--btn-primary-hover-bg);
-  transform: translateY(-1px);
-}
-
-.btn-icon {
-  color: currentColor;
-}
-
 .user-menu {
   display: flex;
   align-items: center;
@@ -697,35 +558,19 @@ body.nav-open {
   font-weight: 500;
 }
 
-.btn-logout {
-  background: var(--btn-secondary-bg);
-  color: var(--btn-secondary-color);
-  border: 1px solid var(--btn-secondary-border);
-}
-
-.btn-logout:hover {
-  background: var(--btn-secondary-hover-bg);
-  transform: translateY(-1px);
-}
-
-.main-container {
-  min-height: 100vh;
-  background: linear-gradient(to bottom, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-  color: var(--color-text);
+.user-actions {
   display: flex;
-  flex-direction: column;
-  transition: background var(--transition-medium), color var(--transition-medium);
+  gap: 0.75rem;
 }
 
-/* Исправленный контейнер для router-view */
 .router-view-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-top: 4rem; /* Отступ для header */
-  min-height: calc(100vh - 4rem); /* Минимальная высота = высота экрана - высота хедера */
-  z-index: 1; /* Убедимся, что контент отображается поверх фона */
-  position: relative; /* Для правильного позиционирования */
+  margin-top: 4rem;
+  min-height: calc(100vh - 4rem);
+  z-index: 1;
+  position: relative;
 }
 
 .achievement-notification {
@@ -735,16 +580,10 @@ body.nav-open {
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(10px);
   border-radius: 12px;
-  box-shadow: var(--box-shadow);
   padding: 1rem;
   z-index: 200;
   width: 300px;
   border: 1px solid var(--color-border);
-  animation: slide-in-right var(--transition-medium) forwards;
-}
-
-.light-theme .achievement-notification {
-  background: rgba(255, 255, 255, 0.9);
 }
 
 .achievement-content {
@@ -756,7 +595,6 @@ body.nav-open {
 
 .achievement-icon {
   font-size: 2rem;
-  animation: pulse var(--transition-slow) infinite alternate;
 }
 
 .achievement-text {
@@ -777,25 +615,6 @@ body.nav-open {
   font-size: 0.85rem;
 }
 
-.achievement-close {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: 0.25rem;
-  transition: color var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  top: 0;
-  right: 0;
-}
-
-.achievement-close:hover {
-  color: var(--color-text);
-}
-
 .achievement-progress {
   margin-top: 0.75rem;
   height: 4px;
@@ -804,69 +623,12 @@ body.nav-open {
   overflow: hidden;
 }
 
-.light-theme .achievement-progress {
-  background: rgba(0, 0, 0, 0.1);
-}
-
 .progress-bar {
   height: 100%;
   background: var(--color-primary);
   transition: width 0.05s linear;
 }
 
-/* Animations */
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  100% {
-    transform: scale(1.1);
-  }
-}
-
-@keyframes slide-in-right {
-  0% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Route Transitions */
-.route-fade-enter-active,
-.route-fade-leave-active {
-  transition: opacity var(--transition-medium);
-}
-
-.route-fade-enter-from,
-.route-fade-leave-to {
-  opacity: 0;
-}
-
-/* Achievement Notification Animation */
-.achievement-slide-enter-active {
-  animation: slide-in-right var(--transition-medium) forwards;
-}
-
-.achievement-slide-leave-active {
-  animation: slide-in-right var(--transition-medium) reverse forwards;
-}
-
-/* Media Queries */
 @media (max-width: 1024px) {
   .header-content {
     padding: 0 1.5rem;
@@ -945,14 +707,10 @@ body.nav-open {
     display: none;
   }
 
-  .btn {
-    padding: 0.4rem 0.75rem;
-  }
-
   .achievement-notification {
     width: calc(100% - 2rem);
     left: 1rem;
     right: 1rem;
   }
 }
-  </style>
+</style>

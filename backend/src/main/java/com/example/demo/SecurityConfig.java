@@ -13,6 +13,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -23,7 +24,11 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/test/**", "/api/hello/**").permitAll()
+                        .requestMatchers("/api/tasks/**", "/api/achievements/**").permitAll()
+                        .requestMatchers("/api/admin/**").permitAll()
+                        .requestMatchers("/api/profile/**").permitAll()
+                        .requestMatchers("/api/uploads/**").permitAll()
                         .anyRequest().permitAll()
                 )
                 .formLogin(form -> form.disable())
