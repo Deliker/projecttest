@@ -14,7 +14,67 @@
             <span>{{ $t('calendar.addTask') }}</span>
           </button>
         </div>
+        <!-- Testing Panel (only visible in development mode) -->
+        <div v-if="isDevelopment" class="timer-test-panel">
+          <div class="test-panel-header">
+            <h3>Timer Testing Panel</h3>
+            <button @click="isTestPanelCollapsed = !isTestPanelCollapsed" class="collapse-btn">
+              {{ isTestPanelCollapsed ? 'Expand' : 'Collapse' }}
+            </button>
+          </div>
 
+          <div v-if="!isTestPanelCollapsed" class="test-panel-content">
+            <div class="test-input-group">
+              <label>Task Description:</label>
+              <input type="text" v-model="testTaskDescription" placeholder="Test Task" class="test-input" />
+            </div>
+
+            <div class="test-input-group">
+              <label>Total Duration (minutes):</label>
+              <input type="number" v-model="testTaskDuration" min="5" class="test-input" />
+            </div>
+
+            <div class="test-input-group">
+              <label>Time Remaining (minutes):</label>
+              <input type="number" v-model="testTimeRemaining" min="1" max="60" class="test-input" />
+            </div>
+
+            <div class="test-buttons">
+              <button @click="createTestTask" class="test-btn">
+                Create & Start Timer
+              </button>
+
+              <button @click="simulateTimerApproaching" class="test-btn warning">
+                Simulate Approaching End
+              </button>
+
+              <button @click="clearAllTestTimers" class="test-btn danger">
+                Clear All Timers
+              </button>
+            </div>
+
+            <div class="active-timers-section">
+              <h4>Active Timers:</h4>
+              <div v-if="Object.keys(timers).length === 0" class="no-timers">
+                No active timers
+              </div>
+              <div v-else class="active-timers-list">
+                <div v-for="(timer, id) in timers" :key="id" class="active-timer-item">
+                  <div class="timer-task-info">
+                    <span class="timer-id">ID: {{ id }}</span>
+                    <span class="timer-desc">{{ getTaskById(id)?.description || 'Unknown Task' }}</span>
+                  </div>
+                  <div class="timer-remaining">
+                    {{ formatTimeRemaining(getTaskById(id)?.timeRemaining || 0) }}
+                  </div>
+                  <button @click="stopTestTimer(id)" class="stop-timer-btn">
+                    Stop
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="calendar-toolbar">
           <div class="month-selector">
             <button @click="previousMonth" class="month-nav-btn" aria-label="Previous month">
@@ -487,12 +547,20 @@ export default {
     const currentMonth = currentDate.getMonth();
     const currentDay = currentDate.getDate();
 
+
     const years = [];
     for (let i = -5; i <= 10; i++) {
       years.push(currentYear + i);
     }
 
     return {
+      isDevelopment: process.env.NODE_ENV === 'development',
+      isTestPanelCollapsed: false,
+      testTaskDescription: 'Test Task',
+      testTaskDuration: 65, // Default to 65 minutes (> 1 hour)
+      testTimeRemaining: 19, // Default to 19 minutes (within the 20 minute warning window)
+      testTaskCounter: 0,
+      notifiedTimers: new Set(),
       selectedMonth: currentMonth,
       selectedDay: currentDay,
       selectedYear: currentYear,
@@ -739,6 +807,17 @@ export default {
         } else {
           task.timeRemaining--;
 
+          // Check if we need to show an approaching end notification
+          // Only if original duration was > 60 minutes (3600 seconds)
+          if (task.duration > 60 &&
+              task.timeRemaining <= 1200 && // 20 minutes or less remaining
+              task.timeRemaining > 0 &&
+              !this.notifiedTimers.has(task.id)) {
+
+            this.showTimerApproachingEndNotification(task);
+            this.notifiedTimers.add(task.id);
+          }
+
           // Save state to database every minute to avoid too many requests
           if (task.timeRemaining % 60 === 0) {
             this.saveTaskToDatabase(task);
@@ -847,7 +926,182 @@ export default {
     closeTaskListModal() {
       this.showTaskListModal = false;
     },
+// Test methods
+    createTestTask() {
+      const taskId = `test_${Date.now()}_${this.testTaskCounter++}`;
+      const totalDurationMinutes = parseInt(this.testTaskDuration) || 65;
+      const timeRemainingMinutes = parseInt(this.testTimeRemaining) || 19;
 
+      // Make sure time remaining doesn't exceed total duration
+      const actualTimeRemaining = Math.min(timeRemainingMinutes, totalDurationMinutes);
+
+      // Create a test task
+      const task = {
+        id: taskId,
+        description: this.testTaskDescription || `Test Task ${this.testTaskCounter}`,
+        category: 'work',
+        categoryColor: '#4CAF50', // Work category color
+        priority: 'medium',
+        year: this.selectedYear,
+        month: this.selectedMonth,
+        day: this.selectedDay,
+        duration: totalDurationMinutes,
+        timeRemaining: actualTimeRemaining * 60, // Convert to seconds
+        timerActive: false,
+        isLocalOnly: true // Mark as local-only task
+      };
+
+      // Add to day tasks
+      const key = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
+      if (!this.tasks[key]) {
+        this.tasks[key] = [];
+      }
+      this.tasks[key].push(task);
+
+      // Start the timer
+      task.timerActive = true;
+      this.initializeTimer(task);
+
+      // Save to localStorage
+      this.saveTasksToLocalStorage();
+
+      console.log('Test task created:', task);
+
+      // Show confirmation message
+      alert(`Test timer started with ${actualTimeRemaining} minutes remaining out of ${totalDurationMinutes} minutes total.`);
+    },
+
+    simulateTimerApproaching() {
+      const taskId = `test_${Date.now()}_${this.testTaskCounter++}`;
+      const totalDurationMinutes = 65; // > 1 hour to trigger notifications
+
+      // Create a test task that will immediately trigger the notification
+      const task = {
+        id: taskId,
+        description: this.testTaskDescription || `About to End Task ${this.testTaskCounter}`,
+        category: 'work',
+        categoryColor: '#4CAF50', // Work category color
+        priority: 'high',
+        year: this.selectedYear,
+        month: this.selectedMonth,
+        day: this.selectedDay,
+        duration: totalDurationMinutes,
+        timeRemaining: 1201, // 20 minutes + 1 second (will trigger on first tick)
+        timerActive: false,
+        isLocalOnly: true // Mark as local-only task
+      };
+
+      // Add to day tasks
+      const key = `${this.selectedYear}-${this.selectedMonth}-${this.selectedDay}`;
+      if (!this.tasks[key]) {
+        this.tasks[key] = [];
+      }
+      this.tasks[key].push(task);
+
+      // Start the timer
+      task.timerActive = true;
+
+      // Force a notification immediately
+      setTimeout(() => {
+        task.timeRemaining = 1200; // Exactly 20 minutes
+        this.showTimerApproachingEndNotification(task);
+        this.notifiedTimers.add(taskId);
+
+        // Then start the normal timer
+        this.initializeTimer(task);
+      }, 500);
+
+      // Save to localStorage
+      this.saveTasksToLocalStorage();
+
+      console.log('Test notification task created:', task);
+    },
+
+    clearAllTestTimers() {
+      // Clear all intervals
+      Object.keys(this.timers).forEach(timerId => {
+        clearInterval(this.timers[timerId]);
+        delete this.timers[timerId];
+      });
+
+      // Remove all test tasks
+      Object.keys(this.tasks).forEach(key => {
+        this.tasks[key] = this.tasks[key].filter(task => !task.id.toString().startsWith('test_'));
+        if (this.tasks[key].length === 0) {
+          delete this.tasks[key];
+        }
+      });
+
+      // Clear notified timers
+      this.notifiedTimers.clear();
+
+      // Save to localStorage
+      this.saveTasksToLocalStorage();
+
+      console.log('All test timers cleared');
+    },
+
+    stopTestTimer(timerId) {
+      if (this.timers[timerId]) {
+        clearInterval(this.timers[timerId]);
+        delete this.timers[timerId];
+
+        // Find and update the task
+        Object.keys(this.tasks).forEach(key => {
+          const taskIndex = this.tasks[key].findIndex(task => task.id.toString() === timerId.toString());
+          if (taskIndex !== -1) {
+            this.tasks[key][taskIndex].timerActive = false;
+          }
+        });
+
+        // Remove from notified timers
+        this.notifiedTimers.delete(timerId);
+
+        // Save to localStorage
+        this.saveTasksToLocalStorage();
+
+        console.log('Timer stopped:', timerId);
+      }
+    },
+
+    getTaskById(id) {
+      let foundTask = null;
+      Object.keys(this.tasks).forEach(key => {
+        const task = this.tasks[key].find(task => task.id.toString() === id.toString());
+        if (task) {
+          foundTask = task;
+        }
+      });
+      return foundTask;
+    },
+    showTimerApproachingEndNotification(task) {
+      const minutesRemaining = Math.ceil(task.timeRemaining / 60);
+      this.timerNotificationMessage = `"${task.description}" - ${this.$t('calendar.timer.approaching')} ${minutesRemaining} ${this.$t('calendar.timer.minutesRemaining')}`;
+      this.showTimerNotification = true;
+
+      // Add custom class to make the warning notification visually distinct
+      const notification = document.querySelector('.timer-notification');
+      if (notification) {
+        notification.classList.add('timer-warning-notification');
+      }
+
+      // Add pulsating effect to the task if visible in the task list
+      const taskElement = document.querySelector(`.task-item[data-id="${task.id}"]`);
+      if (taskElement) {
+        taskElement.classList.add('timer-warning');
+        setTimeout(() => {
+          taskElement.classList.remove('timer-warning');
+        }, 5000);
+      }
+
+      // Auto-close after 5 seconds
+      setTimeout(() => {
+        if (notification) {
+          notification.classList.remove('timer-warning-notification');
+        }
+        this.closeTimerNotification();
+      }, 5000);
+    },
     openAddTaskForSelectedDay() {
       this.closeTaskListModal();
       this.openTaskModal();
@@ -976,6 +1230,9 @@ export default {
 
       task.timerActive = true;
 
+      // Remove task from notified set when timer is started/restarted
+      this.notifiedTimers.delete(taskId);
+
       this.timers[taskId] = setInterval(() => {
         if (task.timeRemaining <= 0) {
           clearInterval(this.timers[taskId]);
@@ -992,6 +1249,17 @@ export default {
           this.saveTaskToDatabase(task);
         } else {
           task.timeRemaining--;
+
+          // Check if we need to show an approaching end notification
+          // Only if original duration was > 60 minutes (3600 seconds)
+          if (task.duration > 60 &&
+              task.timeRemaining <= 1200 && // 20 minutes or less remaining
+              task.timeRemaining > 0 &&
+              !this.notifiedTimers.has(taskId)) {
+
+            this.showTimerApproachingEndNotification(task);
+            this.notifiedTimers.add(taskId);
+          }
 
           if (task.timeRemaining % 60 === 0) {
             this.saveTaskToDatabase(task);
@@ -1012,6 +1280,10 @@ export default {
     },
 
     closeTimerNotification() {
+      const notification = document.querySelector('.timer-notification');
+      if (notification) {
+        notification.classList.remove('timer-warning-notification');
+      }
       this.showTimerNotification = false;
       this.timerNotificationMessage = '';
     },
@@ -1868,6 +2140,8 @@ export default {
     Object.keys(this.timers).forEach(timerId => {
       clearInterval(this.timers[timerId]);
     });
+    this.timers = {};
+    this.notifiedTimers.clear();
 
     if (this.notificationTimer) {
       clearInterval(this.notificationTimer);
@@ -1965,7 +2239,58 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   animation: fadeIn 0.8s ease;
 }
+@keyframes pulse-warning {
+  0% {
+    background: rgba(255, 165, 0, 0.1);
+    border-color: rgba(255, 165, 0, 0.5);
+  }
+  50% {
+    background: rgba(255, 165, 0, 0.2);
+    border-color: rgba(255, 165, 0, 1);
+  }
+  100% {
+    background: rgba(255, 165, 0, 0.1);
+    border-color: rgba(255, 165, 0, 0.5);
+  }
+}
 
+.timer-warning {
+  animation: pulse-warning 1s ease infinite;
+}
+.timer-warning-notification {
+  background: rgba(255, 165, 0, 0.9) !important;
+  border: 1px solid #FFA500 !important;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2), 0 0 15px rgba(255, 165, 0, 0.3) !important;
+}
+
+.timer-warning-notification .timer-notification-icon {
+  color: #FFA500;
+}
+
+.timer-notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: rgba(255, 165, 0, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 1.25rem;
+  z-index: 100;
+  width: 320px;
+  border: 1px solid #FFA500;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2), 0 0 15px rgba(255, 165, 0, 0.3);
+  animation: notification-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* This style already exists but I'm modifying it to make warning notifications visually distinct */
+.timer-notification-icon {
+  font-size: 2.25rem;
+  animation: shake 1.2s ease;
+}
+
+.timer-notification-title.warning {
+  color: #FF8C00;
+}
 .month-selector {
   display: flex;
   align-items: center;
@@ -3072,7 +3397,199 @@ export default {
     width: 100%;
     justify-content: space-between;
   }
+  /* Test Panel Styles */
+  .timer-test-panel {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 400px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 16px 0 0 0;
+    border-left: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border);
+    z-index: 900;
+    color: var(--color-text);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
 
+  .test-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--color-border);
+    background: rgba(var(--color-primary-rgb), 0.2);
+  }
+
+  .test-panel-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--color-primary);
+  }
+
+  .collapse-btn {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+  }
+
+  .collapse-btn:hover {
+    background: var(--color-card-bg-hover);
+    color: var(--color-primary);
+  }
+
+  .test-panel-content {
+    padding: 1rem;
+  }
+
+  .test-input-group {
+    margin-bottom: 1rem;
+  }
+
+  .test-input-group label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+  }
+
+  .test-input {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--color-card-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    color: var(--color-text);
+    font-size: 0.9rem;
+  }
+
+  .test-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .test-btn {
+    flex: 1;
+    padding: 0.6rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 100px;
+  }
+
+  .test-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  }
+
+  .test-btn.warning {
+    background: #FF9800;
+  }
+
+  .test-btn.danger {
+    background: #F44336;
+  }
+
+  .active-timers-section {
+    margin-top: 1rem;
+  }
+
+  .active-timers-section h4 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .no-timers {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .active-timers-list {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .active-timer-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--color-card-bg);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    border-left: 3px solid var(--color-primary);
+  }
+
+  .timer-task-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+  }
+
+  .timer-id {
+    font-size: 0.7rem;
+    color: var(--color-text-secondary);
+  }
+
+  .timer-desc {
+    font-size: 0.9rem;
+    color: var(--color-text);
+  }
+
+  .timer-remaining {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: var(--color-primary);
+    margin: 0 0.5rem;
+  }
+
+  .stop-timer-btn {
+    background: #F44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .stop-timer-btn:hover {
+    background: #D32F2F;
+  }
+
+  @media (max-width: 768px) {
+    .timer-test-panel {
+      width: 100%;
+      border-radius: 16px 16px 0 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+  }
   .calendar-filters {
     width: 100%;
     justify-content: space-between;
