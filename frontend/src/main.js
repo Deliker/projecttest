@@ -16,7 +16,7 @@ import CalendarPage from './components/CalendarPage.vue';
 import AchievementsPage from './components/AchievementsPage.vue';
 import AuthPage from './components/AuthPage.vue';
 import UserProfilePage from './components/UserProfilePage.vue';
-import AdminPanel from "@/components/AdminPanel.vue";
+import AdminPanel from "./components/AdminPanel.vue";
 
 
 // Initialize auth service
@@ -90,9 +90,10 @@ const routes = [
     {
         path: '/admin',
         component: AdminPanel,
-        beforeEnter: requireAdminAuth, // We'll create this guard
+        beforeEnter: requireAdminAuth,
         meta: { title: 'Admin Panel - TaskMaster' }
     }
+
 ];
 
 const router = createRouter({

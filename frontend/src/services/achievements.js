@@ -1,8 +1,13 @@
-// achievements.js - сервис для управления достижениями в приложении TaskMaster
+/**
+ * achievements.js - Modified to integrate with Spring Boot backend
+ * This file provides a service for managing achievements in the TaskMaster application
+ * with database persistence through REST API calls.
+ */
+import apiService from './api';
 
-// Определение всех доступных достижений
+// Define all available achievements - this is just metadata, actual unlocks are stored in DB per user
 export const achievementsList = [
-    // Ежедневные достижения
+    // Daily achievements
     {
         id: 'beginner',
         category: 'daily',
@@ -50,7 +55,7 @@ export const achievementsList = [
         points: 30
     },
 
-    // Еженедельные достижения
+    // Weekly achievements
     {
         id: 'goal_oriented',
         category: 'weekly',
@@ -79,7 +84,7 @@ export const achievementsList = [
         points: 70
     },
 
-    // Ежемесячные достижения
+    // Monthly achievements
     {
         id: 'project_leader',
         category: 'monthly',
@@ -108,7 +113,7 @@ export const achievementsList = [
         points: 200
     },
 
-    // Специальные достижения
+    // Special achievements
     {
         id: 'early_planner',
         category: 'special',
@@ -157,7 +162,7 @@ export const achievementsList = [
     }
 ];
 
-// Категории достижений
+// Achievement categories
 export const achievementCategories = [
     { id: 'daily', name: 'Daily Excellence', description: 'Achievements for daily productivity', icon: '📆' },
     { id: 'weekly', name: 'Weekly Milestones', description: 'Achievements for weekly consistency', icon: '📅' },
@@ -165,13 +170,28 @@ export const achievementCategories = [
     { id: 'special', name: 'Special Achievements', description: 'Unique productivity milestones', icon: '🏆' }
 ];
 
-// Класс для управления достижениями и прогрессом
+// Class for managing achievements and progress
 class AchievementsService {
     constructor() {
-        // Инициализация свойств
+        // Initialize properties
         this.unlockedAchievements = new Set();
         this.achievementsProgress = {};
-        this.stats = {
+        this.stats = this.getDefaultStats();
+        this.recentCompletions = [];
+        this.currentUserId = null;
+        this.achievementsData = null;
+        this.achievementsLoaded = false;
+
+        // Setup event listeners
+        this.initEventListeners();
+
+        // Check if user is logged in
+        this.checkUserLoginStatus();
+    }
+
+    // Default stats object
+    getDefaultStats() {
+        return {
             totalTasksCompleted: 0,
             totalPoints: 0,
             dailyTaskCounts: {},
@@ -183,173 +203,148 @@ class AchievementsService {
             tasksCompletedByDay: [0, 0, 0, 0, 0, 0, 0],
             lastWeekReset: null
         };
-        this.recentCompletions = [];
-
-        // Загрузка состояния из localStorage
-        this.loadState();
-
-        // Настройка слушателей событий
-        this.initEventListeners();
-
-        // Проверка необходимости сброса еженедельной статистики
-        this.checkWeeklyReset();
     }
 
-    // Загрузка состояния достижений из localStorage
-    loadState() {
+    // Check and update user login status
+    checkUserLoginStatus() {
+        const userId = localStorage.getItem('user_id');
+        if (userId && userId !== this.currentUserId) {
+            this.setCurrentUser(userId);
+        }
+    }
+
+    // Set current user and load their achievements
+    setCurrentUser(userId) {
+        if (!userId) return;
+
+        this.currentUserId = userId;
+        this.loadUserAchievements();
+        this.checkWeeklyReset();
+
+        console.log(`Set current user ID for achievements: ${userId}`);
+    }
+
+    // Load achievements from API for current user
+    async loadUserAchievements() {
+        if (!this.currentUserId) {
+            console.warn('Cannot load achievements: No user is logged in');
+            return;
+        }
+
         try {
-            // Загрузка разблокированных достижений
-            const unlockedAchievements = JSON.parse(localStorage.getItem('achievements') || '[]');
-            this.unlockedAchievements = new Set(unlockedAchievements);
+            // Reset local state first
+            this.resetState();
 
-            // Загрузка прогресса достижений
-            this.achievementsProgress = JSON.parse(localStorage.getItem('achievementsProgress') || '{}');
+            // Fetch user's achievements from API
+            const response = await apiService.getAllAchievements(this.currentUserId);
+            const achievements = response.data;
 
-            // Загрузка общих статистических данных
-            const savedStats = JSON.parse(localStorage.getItem('achievementStats') || '{}');
+            // Process achievement data
+            if (Array.isArray(achievements)) {
+                achievements.forEach(achievement => {
+                    this.unlockedAchievements.add(achievement.achievementId);
+                });
+            }
 
-            // Конвертируем массив категорий в Set для правильного отслеживания
-            const categoriesUsed = Array.isArray(savedStats.categoriesUsed)
-                ? new Set(savedStats.categoriesUsed)
-                : new Set();
+            // Fetch achievement stats
+            const statsResponse = await apiService.getAchievementStats(this.currentUserId);
+            const stats = statsResponse.data;
 
-            // Объединение сохраненных данных с дефолтными
-            this.stats = {
-                totalTasksCompleted: savedStats.totalTasksCompleted || 0,
-                totalPoints: savedStats.totalPoints || 0,
-                dailyTaskCounts: savedStats.dailyTaskCounts || {},
-                streak: savedStats.streak || 0,
-                lastCompletionDate: savedStats.lastCompletionDate,
-                categoriesUsed: categoriesUsed,
-                completedTasksByPriority: savedStats.completedTasksByPriority || { high: 0, medium: 0, low: 0 },
-                weeklyTasks: savedStats.weeklyTasks || 0,
-                tasksCompletedByDay: savedStats.tasksCompletedByDay || [0, 0, 0, 0, 0, 0, 0],
-                lastWeekReset: savedStats.lastWeekReset || null
-            };
+            if (stats) {
+                this.stats.totalPoints = stats.totalPoints || 0;
+                this.stats.streak = stats.streak || 0;
+            }
 
-            console.log("Loaded achievement state:", {
+            this.achievementsLoaded = true;
+
+            console.log("Loaded achievements for user", this.currentUserId, {
                 unlockedCount: this.unlockedAchievements.size,
                 stats: this.stats
             });
         } catch (error) {
-            console.error('Error loading achievements state:', error);
-            // Инициализируем дефолтные значения в случае ошибки
-            this.resetState();
+            console.error('Error loading achievements:', error);
+            this.achievementsLoaded = false;
         }
     }
 
-    // Сброс состояния на дефолтные значения
+    // Check if weekly stats need to be reset
+    checkWeeklyReset() {
+        const now = new Date();
+        const currentDay = now.getDay(); // 0 = Sunday
+
+        // If today is Sunday and we haven't reset stats this week
+        if (currentDay === 0) {
+            const today = now.toDateString();
+
+            // If we haven't reset stats today
+            if (this.stats.lastWeekReset !== today) {
+                console.log('Resetting weekly stats for user', this.currentUserId);
+                this.stats.weeklyTasks = 0;
+                this.stats.tasksCompletedByDay = [0, 0, 0, 0, 0, 0, 0];
+                this.stats.lastWeekReset = today;
+            }
+        }
+    }
+
+    // Reset state to default values
     resetState() {
         this.unlockedAchievements = new Set();
         this.achievementsProgress = {};
-        this.stats = {
-            totalTasksCompleted: 0,
-            totalPoints: 0,
-            dailyTaskCounts: {},
-            streak: 0,
-            lastCompletionDate: null,
-            categoriesUsed: new Set(),
-            completedTasksByPriority: { high: 0, medium: 0, low: 0 },
-            weeklyTasks: 0,
-            tasksCompletedByDay: [0, 0, 0, 0, 0, 0, 0],
-            lastWeekReset: null
-        };
+        this.stats = this.getDefaultStats();
         this.recentCompletions = [];
+        this.achievementsLoaded = false;
     }
 
-    // Сохранение состояния достижений в localStorage
-    saveState() {
-        // Конвертируем Set в Array для хранения
-        const categoriesArray = Array.from(this.stats.categoriesUsed);
-        const statsToSave = {
-            ...this.stats,
-            categoriesUsed: categoriesArray
-        };
-
-        localStorage.setItem('achievements', JSON.stringify([...this.unlockedAchievements]));
-        localStorage.setItem('achievementsProgress', JSON.stringify(this.achievementsProgress));
-        localStorage.setItem('achievementStats', JSON.stringify(statsToSave));
-
-        console.log("Saved achievement state:", {
-            unlockedCount: this.unlockedAchievements.size,
-            totalPoints: this.stats.totalPoints,
-            streak: this.stats.streak
-        });
-    }
-
-    // Инициализация слушателей событий
+    // Initialize event listeners
     initEventListeners() {
-        // Слушатель для завершения задачи
+        // Listen for task completion
         document.addEventListener('task-completed', (event) => {
             console.log('Task completed event received:', event.detail);
             this.trackTaskCompletion(event.detail);
         });
 
-        // Слушатель для создания задачи
+        // Listen for task creation
         document.addEventListener('task-created', (event) => {
             console.log('Task created event received:', event.detail);
             this.trackTaskCreation(event.detail);
         });
 
-        // Добавляем глобальный обработчик для симуляции завершения задачи (для тестирования)
-        if (typeof window !== 'undefined') {
-            window.completeTaskManually = (taskData = null) => {
-                const defaultTaskData = {
-                    description: 'Test task',
-                    priority: 'medium',
-                    category: 'work',
-                    day: new Date().getDate(),
-                    month: new Date().getMonth(),
-                    year: new Date().getFullYear()
-                };
+        // Listen for user login/logout events
+        document.addEventListener('user-logged-in', (event) => {
+            console.log('User logged in event received:', event.detail);
+            this.setCurrentUser(event.detail.userId);
+        });
 
-                const data = taskData || defaultTaskData;
-
-                this.trackTaskCompletion(data);
-                console.log('Manual task completion tracked:', data);
-                return 'Task completion simulated';
-            };
-        }
+        document.addEventListener('user-logged-out', () => {
+            console.log('User logged out event received');
+            this.currentUserId = null;
+            this.resetState();
+        });
     }
 
-    // Проверка необходимости сброса еженедельной статистики
-    checkWeeklyReset() {
-        const now = new Date();
-        const currentDay = now.getDay(); // 0 = воскресенье
-
-        // Если сегодня воскресенье и мы еще не сбрасывали статистику на этой неделе
-        if (currentDay === 0) {
-            const today = now.toDateString();
-
-            // Если мы не сбрасывали статистику сегодня
-            if (this.stats.lastWeekReset !== today) {
-                console.log('Resetting weekly stats');
-                this.stats.weeklyTasks = 0;
-                this.stats.tasksCompletedByDay = [0, 0, 0, 0, 0, 0, 0];
-                this.stats.lastWeekReset = today;
-                this.saveState();
-            }
+    // Track task completion
+    async trackTaskCompletion(taskData) {
+        if (!this.currentUserId) {
+            console.warn('Cannot track task completion: No user is logged in');
+            return;
         }
-    }
 
-    // Отслеживание завершения задачи
-    trackTaskCompletion(taskData) {
         const now = new Date();
         const today = now.toDateString();
         const currentHour = now.getHours();
-        const currentDay = now.getDay(); // 0 = воскресенье
+        const currentDay = now.getDay(); // 0 = Sunday
         const isWeekend = currentDay === 0 || currentDay === 6;
 
-        // Обновляем общую статистику
+        // Update general stats
         this.stats.totalTasksCompleted++;
 
-        // Отслеживаем задачи по дням
+        // Track tasks by day
         if (!this.stats.dailyTaskCounts[today]) {
             this.stats.dailyTaskCounts[today] = 0;
         }
         this.stats.dailyTaskCounts[today]++;
 
-        // Обновляем серию последовательных дней
+        // Update consecutive days streak
         if (this.stats.lastCompletionDate) {
             const lastDate = new Date(this.stats.lastCompletionDate);
             const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
@@ -364,42 +359,39 @@ class AchievementsService {
         }
         this.stats.lastCompletionDate = today;
 
-        // Отслеживаем задачи по приоритету
+        // Track tasks by priority
         if (taskData.priority) {
             this.stats.completedTasksByPriority[taskData.priority]++;
         }
 
-        // Отслеживаем категории задач
+        // Track task categories
         if (taskData.category) {
             this.stats.categoriesUsed.add(taskData.category);
         }
 
-        // Отслеживаем задачи по дням недели
+        // Track tasks by day of week
         this.stats.tasksCompletedByDay[currentDay]++;
 
-        // Отслеживаем еженедельные задачи
+        // Track weekly tasks
         this.stats.weeklyTasks++;
 
-        // Добавляем текущее время для отслеживания hourlyTasks
+        // Add current time for tracking hourly completions
         this.recentCompletions.push(now.getTime());
-        // Убираем старые записи (старше часа)
+        // Remove old entries (older than one hour)
         this.recentCompletions = this.recentCompletions.filter(time =>
             now.getTime() - time < 60 * 60 * 1000
         );
 
-        // Проверяем достижения после обновления статистики
-        this.checkAchievements({
+        // Check achievements after updating stats
+        await this.checkAchievements({
             currentHour,
             today,
             isWeekend,
             taskData
         });
 
-        // Сохраняем обновленное состояние
-        this.saveState();
-
-        // Для целей отладки выводим текущее состояние
-        console.log('Updated stats after task completion:', {
+        // Debug log current state
+        console.log(`Updated stats for user ${this.currentUserId} after task completion:`, {
             totalTasks: this.stats.totalTasksCompleted,
             todayTasks: this.stats.dailyTaskCounts[today],
             streak: this.stats.streak,
@@ -409,187 +401,229 @@ class AchievementsService {
         });
     }
 
-    // Отслеживание создания задачи
-    trackTaskCreation(taskData) {
-        // Проверяем заранее запланированные задачи
+    // Track task creation
+    async trackTaskCreation(taskData) {
+        if (!this.currentUserId) {
+            console.warn('Cannot track task creation: No user is logged in');
+            return;
+        }
+
+        // Check for tasks planned in advance
         const now = new Date();
         const taskDate = new Date(taskData.year, taskData.month, taskData.day);
         const daysInAdvance = Math.floor((taskDate - now) / (1000 * 60 * 60 * 24));
 
         if (daysInAdvance >= 7) {
-            // Задача запланирована как минимум на неделю вперед
-            this.updateProgress('early_planner', 1);
-            console.log('Early planner progress updated:', this.achievementsProgress['early_planner']);
+            // Task planned at least a week in advance
+            await this.updateProgress('early_planner', 1);
+            console.log(`Early planner progress updated for user ${this.currentUserId}:`,
+                this.achievementsProgress['early_planner']);
         }
-
-        this.saveState();
     }
 
-    // Проверка достижений на основе текущих данных
-    checkAchievements(context) {
+    async checkSpecialAchievements() {
+        // Speed Runner - complete 3 tasks in an hour
+        if (this.recentCompletions.length >= 3) {
+            await this.unlockAchievement('speed_runner');
+        }
+
+        // Multitasker - complete tasks in 5 different categories
+        if (this.stats.categoriesUsed.size >= 5) {
+            await this.unlockAchievement('multitasker');
+        }
+
+        // Priority Expert - complete 10 high-priority tasks
+        if (this.stats.completedTasksByPriority.high >= 10) {
+            await this.unlockAchievement('priority_expert');
+        }
+    }
+    // Check achievements based on current data
+    async checkAchievements(context) {
+        if (!this.currentUserId) {
+            console.warn('Cannot check achievements: No user is logged in');
+            return;
+        }
+
         const { currentHour, today, isWeekend, taskData } = context;
 
-        // Проверяем ежедневные достижения
-        this.checkDailyAchievements(currentHour, today);
+        // Check daily achievements
+        await this.checkDailyAchievements(currentHour, today);
 
-        // Проверяем еженедельные достижения
-        this.checkWeeklyAchievements(isWeekend);
+        // Check weekly achievements
+        await this.checkWeeklyAchievements(isWeekend);
 
-        // Проверяем ежемесячные достижения
-        this.checkMonthlyAchievements();
+        // Check monthly achievements
+        await this.checkMonthlyAchievements();
 
-        // Проверяем специальные достижения
-        this.checkSpecialAchievements(taskData);
+        // Check special achievements
+        await this.checkSpecialAchievements(taskData);
     }
 
-    // Проверка ежедневных достижений
-    checkDailyAchievements(currentHour, today) {
-        // First Step - завершение первой задачи
+    // Check daily achievements
+    async checkDailyAchievements(currentHour, today) {
+        // First Step - complete first task
         if (this.stats.totalTasksCompleted === 1) {
-            this.unlockAchievement('beginner');
+            await this.unlockAchievement('beginner');
         }
 
-        // Productive Day - завершение 5 задач за день
+        // Productive Day - complete 5 tasks in a day
         if (this.stats.dailyTaskCounts[today] >= 5) {
-            this.unlockAchievement('productive_day');
+            await this.unlockAchievement('productive_day');
         }
 
-        // Super Productive Day - завершение 10 задач за день
+        // Super Productive Day - complete 10 tasks in a day
         if (this.stats.dailyTaskCounts[today] >= 10) {
-            this.unlockAchievement('super_productive_day');
+            await this.unlockAchievement('super_productive_day');
         }
 
-        // Early Bird - завершение задачи до 6 утра
+        // Early Bird - complete task before 6 AM
         if (currentHour < 6) {
-            this.unlockAchievement('early_bird');
+            await this.unlockAchievement('early_bird');
         }
 
-        // Night Owl - завершение задачи после полуночи и до 4 утра
+        // Night Owl - complete task after midnight and before 4 AM
         if (currentHour >= 0 && currentHour < 4) {
-            this.unlockAchievement('night_owl');
+            await this.unlockAchievement('night_owl');
         }
     }
 
-    // Проверка еженедельных достижений
-    checkWeeklyAchievements(isWeekend) {
-        // Goal Oriented - завершение 10 задач за неделю
+    // Check weekly achievements
+    async checkWeeklyAchievements(isWeekend) {
+        // Goal Oriented - complete 10 tasks in a week
         if (this.stats.weeklyTasks >= 10) {
-            this.unlockAchievement('goal_oriented');
+            await this.unlockAchievement('goal_oriented');
         }
 
-        // Weekend Warrior - завершение 5 задач в выходные
+        // Weekend Warrior - complete 5 tasks on weekends
         if (isWeekend) {
-            this.updateProgress('weekend_warrior', 1);
+            await this.updateProgress('weekend_warrior', 1);
 
             if (this.achievementsProgress['weekend_warrior'] >= 5) {
-                this.unlockAchievement('weekend_warrior');
+                await this.unlockAchievement('weekend_warrior');
             }
         }
 
-        // Perfect Week - завершение минимум 1 задачи каждый день недели
+        // Perfect Week - complete at least 1 task every day of the week
         const hasTaskEveryDay = this.stats.tasksCompletedByDay.every(count => count > 0);
         if (hasTaskEveryDay) {
-            this.unlockAchievement('perfect_week');
+            await this.unlockAchievement('perfect_week');
         }
     }
 
-    // Проверка ежемесячных достижений
-    checkMonthlyAchievements() {
-        // Time Master - завершение 50 задач
+    // Check monthly achievements
+    async checkMonthlyAchievements() {
+        // Time Master - complete 50 tasks
         if (this.stats.totalTasksCompleted >= 50) {
-            this.unlockAchievement('time_master');
+            await this.unlockAchievement('time_master');
         }
 
-        // Consistency King - завершение задач 30 дней подряд
+        // Consistency King - complete tasks 30 days in a row
         if (this.stats.streak >= 30) {
-            this.unlockAchievement('consistency');
+            await this.unlockAchievement('consistency');
         }
     }
 
-    // Проверка специальных достижений
-    checkSpecialAchievements() {
-        // Speed Runner - завершение 3 задач за час
-        if (this.recentCompletions.length >= 3) {
-            this.unlockAchievement('speed_runner');
+    // Check special achievements
+
+
+    // Update achievement progress
+    async updateProgress(achievementId, increment = 1) {
+        if (!this.currentUserId) {
+            console.warn('Cannot update progress: No user is logged in');
+            return;
         }
 
-        // Multitasker - завершение задач в 5 различных категориях
-        if (this.stats.categoriesUsed.size >= 5) {
-            this.unlockAchievement('multitasker');
-        }
-
-        // Priority Expert - завершение 10 высокоприоритетных задач
-        if (this.stats.completedTasksByPriority.high >= 10) {
-            this.unlockAchievement('priority_expert');
-        }
-    }
-
-    // Обновление прогресса достижения
-    updateProgress(achievementId, increment = 1) {
         if (!this.achievementsProgress[achievementId]) {
             this.achievementsProgress[achievementId] = 0;
         }
 
         this.achievementsProgress[achievementId] += increment;
 
-        // Получаем целевое значение для достижения
+        // Get target value for the achievement
         const achievement = achievementsList.find(a => a.id === achievementId);
         if (!achievement) return;
 
-        // Проверяем, достигнуто ли целевое значение
+        // Check if target value has been reached
         if (this.achievementsProgress[achievementId] >= achievement.requirement) {
-            this.unlockAchievement(achievementId);
+            await this.unlockAchievement(achievementId);
         }
     }
 
-    // Разблокировка достижения
-    unlockAchievement(achievementId) {
-        // Проверяем, не разблокировано ли уже достижение
+    // Unlock achievement
+    async unlockAchievement(achievementId) {
+        if (!this.currentUserId) {
+            console.warn('Cannot unlock achievement: No user is logged in');
+            return false;
+        }
+
+        // Check if achievement is already unlocked
         if (this.unlockedAchievements.has(achievementId)) {
             return false;
         }
 
-        // Находим достижение в списке
+        // Find achievement in list
         const achievement = achievementsList.find(a => a.id === achievementId);
         if (!achievement) {
             console.error(`Achievement with id "${achievementId}" not found`);
             return false;
         }
 
-        // Разблокируем достижение
-        this.unlockedAchievements.add(achievementId);
+        try {
+            // Unlock achievement on the server
+            await apiService.unlockAchievement(this.currentUserId, achievementId);
 
-        // Добавляем очки
-        this.stats.totalPoints += achievement.points;
+            // Update local state
+            this.unlockedAchievements.add(achievementId);
 
-        // Сохраняем состояние
-        this.saveState();
+            // Add points
+            this.stats.totalPoints += achievement.points;
 
-        // Отправляем событие о разблокировке достижения
-        const event = new CustomEvent('achievement-unlocked', {
-            detail: {
-                id: achievementId,
-                title: achievement.title,
-                description: achievement.description,
-                icon: achievement.icon,
-                points: achievement.points
-            }
-        });
-        document.dispatchEvent(event);
+            // Send achievement unlocked event
+            const event = new CustomEvent('achievement-unlocked', {
+                detail: {
+                    id: achievementId,
+                    title: achievement.title,
+                    description: achievement.description,
+                    icon: achievement.icon,
+                    points: achievement.points,
+                    userId: this.currentUserId
+                }
+            });
+            document.dispatchEvent(event);
 
-        console.log('Achievement unlocked:', achievement.title, '(+', achievement.points, 'points)');
+            console.log(`Achievement unlocked for user ${this.currentUserId}:`,
+                achievement.title, '(+', achievement.points, 'points)');
 
-        return true;
+            return true;
+        } catch (error) {
+            console.error(`Failed to unlock achievement ${achievementId}:`, error);
+            return false;
+        }
     }
 
-    // Получение списка всех достижений с информацией о разблокировке
+    // Get list of all achievements with unlock information
     getAllAchievements() {
+        if (!this.currentUserId) {
+            console.warn('Cannot get achievements: No user is logged in');
+            return achievementsList.map(achievement => ({
+                ...achievement,
+                isUnlocked: false,
+                progress: 0,
+                totalRequired: achievement.requirement
+            }));
+        }
+
+        if (!this.achievementsLoaded) {
+            // Trigger loading if not already loaded
+            this.loadUserAchievements();
+        }
+
         return achievementsList.map(achievement => {
             const isUnlocked = this.unlockedAchievements.has(achievement.id);
             const progress = this.achievementsProgress[achievement.id] || 0;
             const totalRequired = achievement.requirement;
 
-            // Скрываем информацию о "секретных" достижениях, пока они не разблокированы
+            // Hide information about "secret" achievements until unlocked
             if (achievement.secret && !isUnlocked) {
                 return {
                     id: achievement.id,
@@ -614,8 +648,19 @@ class AchievementsService {
         });
     }
 
-    // Получение статистики достижений
+    // Get achievement statistics
     getStats() {
+        if (!this.currentUserId) {
+            console.warn('Cannot get stats: No user is logged in');
+            return {
+                totalAchievements: achievementsList.length,
+                unlockedCount: 0,
+                progressPercentage: 0,
+                totalPoints: 0,
+                streak: 0
+            };
+        }
+
         const totalAchievements = achievementsList.length;
         const unlockedCount = this.unlockedAchievements.size;
         const progressPercentage = Math.round((unlockedCount / totalAchievements) * 100) || 0;
@@ -629,7 +674,7 @@ class AchievementsService {
         };
     }
 
-    // Получение достижений по категории
+    // Get achievements by category
     getAchievementsByCategory() {
         const result = {};
 
@@ -642,36 +687,49 @@ class AchievementsService {
         return result;
     }
 
-    // Для тестирования и отладки: разблокировать случайное достижение
-    unlockRandomAchievement() {
+    // For testing: unlock random achievement
+    async unlockRandomAchievement() {
+        if (!this.currentUserId) {
+            console.warn('Cannot unlock achievement: No user is logged in');
+            return false;
+        }
+
         const lockedAchievements = achievementsList
             .filter(a => !this.unlockedAchievements.has(a.id))
             .map(a => a.id);
 
         if (lockedAchievements.length === 0) {
-            console.log('All achievements are already unlocked!');
+            console.log('All achievements are already unlocked for user', this.currentUserId);
             return false;
         }
 
         const randomId = lockedAchievements[Math.floor(Math.random() * lockedAchievements.length)];
-        return this.unlockAchievement(randomId);
+        return await this.unlockAchievement(randomId);
     }
 
-    // Сброс всех достижений (для тестирования)
-    resetAllAchievements() {
-        this.resetState();
-        this.saveState();
-        console.log('All achievements have been reset');
-        return true;
+    // Reset all achievements (for testing)
+    async resetAllAchievements() {
+        if (!this.currentUserId) {
+            console.warn('Cannot reset achievements: No user is logged in');
+            return false;
+        }
+
+        try {
+            // We would need to implement a server API for this if needed
+            // For now, just reset local state
+            this.resetState();
+            await this.loadUserAchievements();
+
+            console.log('All achievements have been reset for user', this.currentUserId);
+            return true;
+        } catch (error) {
+            console.error('Failed to reset achievements:', error);
+            return false;
+        }
     }
 }
 
-// Создаем и экспортируем экземпляр сервиса достижений
+// Create and export achievements service instance
 const achievementsService = new AchievementsService();
-
-// Добавляем сервис в глобальный объект window для отладки
-if (typeof window !== 'undefined') {
-    window.achievementsService = achievementsService;
-}
 
 export default achievementsService;

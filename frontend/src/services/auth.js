@@ -1,3 +1,4 @@
+
 import apiService from './api';
 
 export default {
@@ -23,23 +24,32 @@ export default {
         this.state.user = JSON.parse(user);
         this.state.userId = parseInt(userId);
         this.state.isAuthenticated = true;
+        console.log("Auth initialized with user role:", this.state.user?.role);
       } catch (e) {
         console.error('Error parsing stored user data', e);
         this.logout();
       }
     }
   },
+
+  // Check if current user has admin role
   isAdmin() {
-    return this.state.user && this.state.user.role === 'ADMIN';
+    console.log("Checking admin status, current role:", this.state.user?.role);
+    // Check for both uppercase and lowercase role values to be safe
+    return this.state.user &&
+        (this.state.user.role === 'ADMIN' ||
+            this.state.user.role === 'admin' ||
+            this.state.user.role === 'Admin');
   },
+
   // Register a new user
   async register(name, email, password) {
     this.state.loading = true;
     this.state.error = null;
-    
+
     try {
       await apiService.register({ name, email, password });
-      
+
       // Automatically log in after successful registration
       return this.login(email, password);
     } catch (error) {
@@ -57,6 +67,7 @@ export default {
     try {
       const response = await apiService.login({ email, password });
 
+      // Make sure we get the role from the response
       const { id, name, email: userEmail, token, role } = response.data;
 
       // Store auth data including role
@@ -86,7 +97,7 @@ export default {
     this.state.user = null;
     this.state.userId = null;
     this.state.token = null;
-    
+
     // Clear localStorage
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
@@ -98,9 +109,19 @@ export default {
     if (!this.state.isAuthenticated || !this.state.userId) {
       throw new Error('User not authenticated');
     }
-    
+
     try {
       const response = await apiService.getUserInfo(this.state.userId);
+
+      // If the profile response includes role information, update it
+      if (response.data && response.data.role) {
+        this.state.user = {
+          ...this.state.user,
+          role: response.data.role
+        };
+        localStorage.setItem('user', JSON.stringify(this.state.user));
+      }
+
       return response.data;
     } catch (error) {
       console.error('Error fetching user profile:', error);
