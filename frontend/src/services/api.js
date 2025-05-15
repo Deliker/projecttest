@@ -168,5 +168,28 @@ export default {
   // Test endpoint
   testConnection() {
     return apiClient.get('/test');
+  },
+  getAdminUsers() {
+    return apiClient.get('/admin/users');
+  },
+
+  getUserById(userId) {
+    return apiClient.get(`/admin/users/${userId}`);
+  },
+
+  updateUserRole(userId, roleData) {
+    return apiClient.put(`/admin/users/${userId}/role`, roleData);
+  },
+
+  deleteUser(userId) {
+    return apiClient.delete(`/admin/users/${userId}`);
+  },
+
+  getAdminStats() {
+    return apiClient.get('/admin/stats');
+  },
+
+  updateAdminSettings(settings) {
+    return apiClient.put('/admin/settings', settings);
   }
 };

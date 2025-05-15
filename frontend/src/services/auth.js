@@ -29,7 +29,9 @@ export default {
       }
     }
   },
-
+  isAdmin() {
+    return this.state.user && this.state.user.role === 'ADMIN';
+  },
   // Register a new user
   async register(name, email, password) {
     this.state.loading = true;
@@ -51,23 +53,23 @@ export default {
   async login(email, password) {
     this.state.loading = true;
     this.state.error = null;
-    
+
     try {
       const response = await apiService.login({ email, password });
-      
-      const { id, name, email: userEmail, token } = response.data;
-      
-      // Store auth data
+
+      const { id, name, email: userEmail, token, role } = response.data;
+
+      // Store auth data including role
       this.state.isAuthenticated = true;
-      this.state.user = { name, email: userEmail };
+      this.state.user = { name, email: userEmail, role };
       this.state.userId = id;
       this.state.token = token;
-      
+
       // Persist to localStorage
       localStorage.setItem('auth_token', token);
       localStorage.setItem('user', JSON.stringify(this.state.user));
       localStorage.setItem('user_id', id);
-      
+
       this.state.loading = false;
       return response.data;
     } catch (error) {

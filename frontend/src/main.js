@@ -16,11 +16,27 @@ import CalendarPage from './components/CalendarPage.vue';
 import AchievementsPage from './components/AchievementsPage.vue';
 import AuthPage from './components/AuthPage.vue';
 import UserProfilePage from './components/UserProfilePage.vue';
+import AdminPanel from "@/components/AdminPanel.vue";
 
 
 // Initialize auth service
 auth.init();
-
+const requireAdminAuth = (to, from, next) => {
+    if (!auth.isAuthenticated()) {
+        next({
+            path: '/auth',
+            query: {
+                redirect: to.fullPath,
+                mode: 'login'
+            }
+        });
+    } else if (!auth.isAdmin()) {
+        // Redirect non-admin users to the home page
+        next({ path: '/' });
+    } else {
+        next();
+    }
+};
 // Route guards
 const requireAuth = (to, from, next) => {
     if (!auth.isAuthenticated()) {
@@ -70,6 +86,12 @@ const routes = [
     {
         path: '/:pathMatch(.*)*',
         redirect: '/'
+    },
+    {
+        path: '/admin',
+        component: AdminPanel,
+        beforeEnter: requireAdminAuth, // We'll create this guard
+        meta: { title: 'Admin Panel - TaskMaster' }
     }
 ];
 
@@ -84,6 +106,7 @@ const router = createRouter({
         }
     }
 });
+
 
 // Update document title based on route meta and current language
 router.afterEach((to) => {
