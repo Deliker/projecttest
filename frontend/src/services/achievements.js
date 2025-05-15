@@ -1,11 +1,8 @@
-/**
- * achievements.js - Modified to integrate with Spring Boot backend
- * This file provides a service for managing achievements in the TaskMaster application
- * with database persistence through REST API calls.
- */
+// achievements.js - service for managing achievements in TaskMaster application
 import apiService from './api';
+import auth from './auth';
 
-// Define all available achievements - this is just metadata, actual unlocks are stored in DB per user
+// Define all available achievements
 export const achievementsList = [
     // Daily achievements
     {
@@ -176,22 +173,7 @@ class AchievementsService {
         // Initialize properties
         this.unlockedAchievements = new Set();
         this.achievementsProgress = {};
-        this.stats = this.getDefaultStats();
-        this.recentCompletions = [];
-        this.currentUserId = null;
-        this.achievementsData = null;
-        this.achievementsLoaded = false;
-
-        // Setup event listeners
-        this.initEventListeners();
-
-        // Check if user is logged in
-        this.checkUserLoginStatus();
-    }
-
-    // Default stats object
-    getDefaultStats() {
-        return {
+        this.stats = {
             totalTasksCompleted: 0,
             totalPoints: 0,
             dailyTaskCounts: {},
@@ -203,67 +185,289 @@ class AchievementsService {
             tasksCompletedByDay: [0, 0, 0, 0, 0, 0, 0],
             lastWeekReset: null
         };
-    }
+        this.recentCompletions = [];
+        this.currentUserId = null;
 
-    // Check and update user login status
-    checkUserLoginStatus() {
-        const userId = localStorage.getItem('user_id');
-        if (userId && userId !== this.currentUserId) {
-            this.setCurrentUser(userId);
+        // Set up event listeners
+        this.initEventListeners();
+
+        // Check if we need to reset weekly stats
+        this.checkWeeklyReset();
+
+        // Load achievements if a user is already logged in
+        if (this.getCurrentUserId()) {
+            this.loadState();
         }
     }
 
-    // Set current user and load their achievements
-    setCurrentUser(userId) {
-        if (!userId) return;
-
-        this.currentUserId = userId;
-        this.loadUserAchievements();
-        this.checkWeeklyReset();
-
-        console.log(`Set current user ID for achievements: ${userId}`);
+    // Get current user ID from auth service
+    getCurrentUserId() {
+        if (auth && auth.state && auth.state.userId) {
+            return auth.state.userId;
+        }
+        return null;
     }
 
-    // Load achievements from API for current user
-    async loadUserAchievements() {
-        if (!this.currentUserId) {
-            console.warn('Cannot load achievements: No user is logged in');
+    // Generate user-specific keys for localStorage
+    getUserStorageKey(baseKey) {
+        const userId = this.getCurrentUserId();
+        if (!userId) return null;
+        return `user_${userId}_${baseKey}`;
+    }
+
+    // Load achievements state
+    async loadState() {
+        const userId = this.getCurrentUserId();
+        if (!userId) {
+            console.warn('No user ID available, cannot load achievements');
             return;
         }
 
+        this.currentUserId = userId;
+
         try {
-            // Reset local state first
-            this.resetState();
+            // First attempt to load from API
+            const achievementsFromApi = await this.loadAchievementsFromApi(userId);
 
-            // Fetch user's achievements from API
-            const response = await apiService.getAllAchievements(this.currentUserId);
-            const achievements = response.data;
-
-            // Process achievement data
-            if (Array.isArray(achievements)) {
-                achievements.forEach(achievement => {
-                    this.unlockedAchievements.add(achievement.achievementId);
-                });
+            if (achievementsFromApi) {
+                console.log('Loaded achievements from API for user:', userId);
+                return;
             }
 
-            // Fetch achievement stats
-            const statsResponse = await apiService.getAchievementStats(this.currentUserId);
-            const stats = statsResponse.data;
+            // Fallback to localStorage if API fails
+            this.loadFromLocalStorage(userId);
+        } catch (error) {
+            console.error('Error loading achievements:', error);
+            // Fallback to localStorage if API fails
+            this.loadFromLocalStorage(userId);
+        }
+    }
 
-            if (stats) {
-                this.stats.totalPoints = stats.totalPoints || 0;
-                this.stats.streak = stats.streak || 0;
+    // Load achievements from API
+    async loadAchievementsFromApi(userId) {
+        try {
+            // Get all achievements for user
+            const achievementsResponse = await apiService.getAllAchievements(userId);
+            if (!achievementsResponse || !achievementsResponse.data) {
+                return false;
             }
 
-            this.achievementsLoaded = true;
+            // Transform API data to local format
+            const achievements = achievementsResponse.data;
+            this.unlockedAchievements = new Set(achievements.map(a => a.achievementId));
 
-            console.log("Loaded achievements for user", this.currentUserId, {
+            // Get achievement stats
+            const statsResponse = await apiService.getAchievementStats(userId);
+            if (statsResponse && statsResponse.data) {
+                const apiStats = statsResponse.data;
+
+                // Update local stats from API data
+                this.stats.totalPoints = apiStats.totalPoints || 0;
+                this.stats.unlockedCount = apiStats.unlockedCount || 0;
+                this.stats.progressPercentage = apiStats.progressPercentage || 0;
+            }
+
+            console.log("Loaded achievement state from API:", {
+                unlockedCount: this.unlockedAchievements.size,
+                stats: this.stats
+            });
+
+            return true;
+        } catch (error) {
+            console.error('Failed to load achievements from API:', error);
+            return false;
+        }
+    }
+
+    // Load achievements from localStorage (fallback)
+    loadFromLocalStorage(userId) {
+        try {
+            // Use user-specific keys for localStorage
+            const achievementsKey = this.getUserStorageKey('achievements');
+            const progressKey = this.getUserStorageKey('achievementsProgress');
+            const statsKey = this.getUserStorageKey('achievementStats');
+
+            if (!achievementsKey || !progressKey || !statsKey) {
+                return;
+            }
+
+            // Load unlocked achievements
+            const unlockedAchievements = JSON.parse(localStorage.getItem(achievementsKey) || '[]');
+            this.unlockedAchievements = new Set(unlockedAchievements);
+
+            // Load achievements progress
+            this.achievementsProgress = JSON.parse(localStorage.getItem(progressKey) || '{}');
+
+            // Load general statistics data
+            const savedStats = JSON.parse(localStorage.getItem(statsKey) || '{}');
+
+            // Convert categories array to Set for proper tracking
+            const categoriesUsed = Array.isArray(savedStats.categoriesUsed)
+                ? new Set(savedStats.categoriesUsed)
+                : new Set();
+
+            // Combine saved data with defaults
+            this.stats = {
+                totalTasksCompleted: savedStats.totalTasksCompleted || 0,
+                totalPoints: savedStats.totalPoints || 0,
+                dailyTaskCounts: savedStats.dailyTaskCounts || {},
+                streak: savedStats.streak || 0,
+                lastCompletionDate: savedStats.lastCompletionDate,
+                categoriesUsed: categoriesUsed,
+                completedTasksByPriority: savedStats.completedTasksByPriority || { high: 0, medium: 0, low: 0 },
+                weeklyTasks: savedStats.weeklyTasks || 0,
+                tasksCompletedByDay: savedStats.tasksCompletedByDay || [0, 0, 0, 0, 0, 0, 0],
+                lastWeekReset: savedStats.lastWeekReset || null
+            };
+
+            console.log("Loaded achievement state from localStorage:", {
                 unlockedCount: this.unlockedAchievements.size,
                 stats: this.stats
             });
         } catch (error) {
-            console.error('Error loading achievements:', error);
-            this.achievementsLoaded = false;
+            console.error('Error loading achievements from localStorage:', error);
+            // Initialize default values in case of error
+            this.resetState();
+        }
+    }
+
+    // Reset state to default values
+    resetState() {
+        this.unlockedAchievements = new Set();
+        this.achievementsProgress = {};
+        this.stats = {
+            totalTasksCompleted: 0,
+            totalPoints: 0,
+            dailyTaskCounts: {},
+            streak: 0,
+            lastCompletionDate: null,
+            categoriesUsed: new Set(),
+            completedTasksByPriority: { high: 0, medium: 0, low: 0 },
+            weeklyTasks: 0,
+            tasksCompletedByDay: [0, 0, 0, 0, 0, 0, 0],
+            lastWeekReset: null
+        };
+        this.recentCompletions = [];
+    }
+
+    // Save achievements state
+    async saveState() {
+        const userId = this.getCurrentUserId();
+        if (!userId) {
+            console.warn('No user ID available, cannot save achievements');
+            return;
+        }
+
+        // Save to localStorage as backup
+        this.saveToLocalStorage(userId);
+
+        // Also attempt to save to API
+        await this.saveToApi(userId);
+    }
+
+    // Save achievements to API
+    async saveToApi(userId) {
+        // Nothing to unlock if unlockedAchievements is empty
+        if (this.unlockedAchievements.size === 0) {
+            return;
+        }
+
+        try {
+            // For each unlocked achievement that hasn't been saved to the API yet
+            for (const achievementId of this.unlockedAchievements) {
+                try {
+                    // Check if user already has this achievement
+                    const checkResponse = await apiService.checkAchievement(userId, achievementId);
+                    const hasAchievement = checkResponse.data?.hasAchievement;
+
+                    // If they don't have it, unlock it via API
+                    if (!hasAchievement) {
+                        await apiService.unlockAchievement(userId, achievementId);
+                        console.log(`Achievement ${achievementId} saved to API for user ${userId}`);
+                    }
+                } catch (error) {
+                    console.error(`Failed to save achievement ${achievementId} to API:`, error);
+                }
+            }
+        } catch (error) {
+            console.error('Error saving achievements to API:', error);
+        }
+    }
+
+    // Save achievements to localStorage (backup)
+    saveToLocalStorage(userId) {
+        try {
+            // Use user-specific keys for localStorage
+            const achievementsKey = this.getUserStorageKey('achievements');
+            const progressKey = this.getUserStorageKey('achievementsProgress');
+            const statsKey = this.getUserStorageKey('achievementStats');
+
+            if (!achievementsKey || !progressKey || !statsKey) {
+                return;
+            }
+
+            // Convert Set to Array for storage
+            const categoriesArray = Array.from(this.stats.categoriesUsed);
+            const statsToSave = {
+                ...this.stats,
+                categoriesUsed: categoriesArray
+            };
+
+            // Save to localStorage with user-specific keys
+            localStorage.setItem(achievementsKey, JSON.stringify([...this.unlockedAchievements]));
+            localStorage.setItem(progressKey, JSON.stringify(this.achievementsProgress));
+            localStorage.setItem(statsKey, JSON.stringify(statsToSave));
+
+            console.log("Saved achievement state to localStorage:", {
+                unlockedCount: this.unlockedAchievements.size,
+                totalPoints: this.stats.totalPoints,
+                streak: this.stats.streak
+            });
+        } catch (error) {
+            console.error('Error saving achievements to localStorage:', error);
+        }
+    }
+
+    // Initialize event listeners
+    initEventListeners() {
+        // Listen for user login/logout events
+        document.addEventListener('user-logged-in', () => {
+            this.loadState();
+        });
+
+        document.addEventListener('user-logged-out', () => {
+            this.resetState();
+        });
+
+        // Listen for task completion
+        document.addEventListener('task-completed', (event) => {
+            console.log('Task completed event received:', event.detail);
+            this.trackTaskCompletion(event.detail);
+        });
+
+        // Listen for task creation
+        document.addEventListener('task-created', (event) => {
+            console.log('Task created event received:', event.detail);
+            this.trackTaskCreation(event.detail);
+        });
+
+        // Add global handler for achievement testing (for development)
+        if (typeof window !== 'undefined') {
+            window.completeTaskManually = (taskData = null) => {
+                const defaultTaskData = {
+                    description: 'Test task',
+                    priority: 'medium',
+                    category: 'work',
+                    day: new Date().getDate(),
+                    month: new Date().getMonth(),
+                    year: new Date().getFullYear()
+                };
+
+                const data = taskData || defaultTaskData;
+                this.trackTaskCompletion(data);
+                console.log('Manual task completion tracked:', data);
+                return 'Task completion simulated';
+            };
         }
     }
 
@@ -278,54 +482,20 @@ class AchievementsService {
 
             // If we haven't reset stats today
             if (this.stats.lastWeekReset !== today) {
-                console.log('Resetting weekly stats for user', this.currentUserId);
+                console.log('Resetting weekly stats');
                 this.stats.weeklyTasks = 0;
                 this.stats.tasksCompletedByDay = [0, 0, 0, 0, 0, 0, 0];
                 this.stats.lastWeekReset = today;
+                this.saveState();
             }
         }
     }
 
-    // Reset state to default values
-    resetState() {
-        this.unlockedAchievements = new Set();
-        this.achievementsProgress = {};
-        this.stats = this.getDefaultStats();
-        this.recentCompletions = [];
-        this.achievementsLoaded = false;
-    }
-
-    // Initialize event listeners
-    initEventListeners() {
-        // Listen for task completion
-        document.addEventListener('task-completed', (event) => {
-            console.log('Task completed event received:', event.detail);
-            this.trackTaskCompletion(event.detail);
-        });
-
-        // Listen for task creation
-        document.addEventListener('task-created', (event) => {
-            console.log('Task created event received:', event.detail);
-            this.trackTaskCreation(event.detail);
-        });
-
-        // Listen for user login/logout events
-        document.addEventListener('user-logged-in', (event) => {
-            console.log('User logged in event received:', event.detail);
-            this.setCurrentUser(event.detail.userId);
-        });
-
-        document.addEventListener('user-logged-out', () => {
-            console.log('User logged out event received');
-            this.currentUserId = null;
-            this.resetState();
-        });
-    }
-
     // Track task completion
-    async trackTaskCompletion(taskData) {
-        if (!this.currentUserId) {
-            console.warn('Cannot track task completion: No user is logged in');
+    trackTaskCompletion(taskData) {
+        const userId = this.getCurrentUserId();
+        if (!userId) {
+            console.warn('No user ID available, cannot track task completion');
             return;
         }
 
@@ -335,7 +505,7 @@ class AchievementsService {
         const currentDay = now.getDay(); // 0 = Sunday
         const isWeekend = currentDay === 0 || currentDay === 6;
 
-        // Update general stats
+        // Update general statistics
         this.stats.totalTasksCompleted++;
 
         // Track tasks by day
@@ -344,7 +514,7 @@ class AchievementsService {
         }
         this.stats.dailyTaskCounts[today]++;
 
-        // Update consecutive days streak
+        // Update consecutive day streak
         if (this.stats.lastCompletionDate) {
             const lastDate = new Date(this.stats.lastCompletionDate);
             const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
@@ -375,23 +545,26 @@ class AchievementsService {
         // Track weekly tasks
         this.stats.weeklyTasks++;
 
-        // Add current time for tracking hourly completions
+        // Add current time for tracking hourly tasks
         this.recentCompletions.push(now.getTime());
-        // Remove old entries (older than one hour)
+        // Remove old entries (older than an hour)
         this.recentCompletions = this.recentCompletions.filter(time =>
             now.getTime() - time < 60 * 60 * 1000
         );
 
-        // Check achievements after updating stats
-        await this.checkAchievements({
+        // Check achievements after updating statistics
+        this.checkAchievements({
             currentHour,
             today,
             isWeekend,
             taskData
         });
 
-        // Debug log current state
-        console.log(`Updated stats for user ${this.currentUserId} after task completion:`, {
+        // Save updated state
+        this.saveState();
+
+        // For debugging, output current state
+        console.log('Updated stats after task completion:', {
             totalTasks: this.stats.totalTasksCompleted,
             todayTasks: this.stats.dailyTaskCounts[today],
             streak: this.stats.streak,
@@ -402,160 +575,146 @@ class AchievementsService {
     }
 
     // Track task creation
-    async trackTaskCreation(taskData) {
-        if (!this.currentUserId) {
-            console.warn('Cannot track task creation: No user is logged in');
+    trackTaskCreation(taskData) {
+        const userId = this.getCurrentUserId();
+        if (!userId) {
+            console.warn('No user ID available, cannot track task creation');
             return;
         }
 
-        // Check for tasks planned in advance
+        // Check for planned ahead tasks
         const now = new Date();
         const taskDate = new Date(taskData.year, taskData.month, taskData.day);
         const daysInAdvance = Math.floor((taskDate - now) / (1000 * 60 * 60 * 24));
 
         if (daysInAdvance >= 7) {
-            // Task planned at least a week in advance
-            await this.updateProgress('early_planner', 1);
-            console.log(`Early planner progress updated for user ${this.currentUserId}:`,
-                this.achievementsProgress['early_planner']);
+            // Task is planned at least a week ahead
+            this.updateProgress('early_planner', 1);
+            console.log('Early planner progress updated:', this.achievementsProgress['early_planner']);
         }
+
+        this.saveState();
     }
 
-    async checkSpecialAchievements() {
-        // Speed Runner - complete 3 tasks in an hour
-        if (this.recentCompletions.length >= 3) {
-            await this.unlockAchievement('speed_runner');
-        }
-
-        // Multitasker - complete tasks in 5 different categories
-        if (this.stats.categoriesUsed.size >= 5) {
-            await this.unlockAchievement('multitasker');
-        }
-
-        // Priority Expert - complete 10 high-priority tasks
-        if (this.stats.completedTasksByPriority.high >= 10) {
-            await this.unlockAchievement('priority_expert');
-        }
-    }
     // Check achievements based on current data
-    async checkAchievements(context) {
-        if (!this.currentUserId) {
-            console.warn('Cannot check achievements: No user is logged in');
-            return;
-        }
-
+    checkAchievements(context) {
         const { currentHour, today, isWeekend, taskData } = context;
 
         // Check daily achievements
-        await this.checkDailyAchievements(currentHour, today);
+        this.checkDailyAchievements(currentHour, today);
 
         // Check weekly achievements
-        await this.checkWeeklyAchievements(isWeekend);
+        this.checkWeeklyAchievements(isWeekend);
 
         // Check monthly achievements
-        await this.checkMonthlyAchievements();
+        this.checkMonthlyAchievements();
 
         // Check special achievements
-        await this.checkSpecialAchievements(taskData);
+        this.checkSpecialAchievements(taskData);
     }
 
     // Check daily achievements
-    async checkDailyAchievements(currentHour, today) {
+    checkDailyAchievements(currentHour, today) {
         // First Step - complete first task
         if (this.stats.totalTasksCompleted === 1) {
-            await this.unlockAchievement('beginner');
+            this.unlockAchievement('beginner');
         }
 
         // Productive Day - complete 5 tasks in a day
         if (this.stats.dailyTaskCounts[today] >= 5) {
-            await this.unlockAchievement('productive_day');
+            this.unlockAchievement('productive_day');
         }
 
         // Super Productive Day - complete 10 tasks in a day
         if (this.stats.dailyTaskCounts[today] >= 10) {
-            await this.unlockAchievement('super_productive_day');
+            this.unlockAchievement('super_productive_day');
         }
 
         // Early Bird - complete task before 6 AM
         if (currentHour < 6) {
-            await this.unlockAchievement('early_bird');
+            this.unlockAchievement('early_bird');
         }
 
         // Night Owl - complete task after midnight and before 4 AM
         if (currentHour >= 0 && currentHour < 4) {
-            await this.unlockAchievement('night_owl');
+            this.unlockAchievement('night_owl');
         }
     }
 
     // Check weekly achievements
-    async checkWeeklyAchievements(isWeekend) {
+    checkWeeklyAchievements(isWeekend) {
         // Goal Oriented - complete 10 tasks in a week
         if (this.stats.weeklyTasks >= 10) {
-            await this.unlockAchievement('goal_oriented');
+            this.unlockAchievement('goal_oriented');
         }
 
         // Weekend Warrior - complete 5 tasks on weekends
         if (isWeekend) {
-            await this.updateProgress('weekend_warrior', 1);
+            this.updateProgress('weekend_warrior', 1);
 
             if (this.achievementsProgress['weekend_warrior'] >= 5) {
-                await this.unlockAchievement('weekend_warrior');
+                this.unlockAchievement('weekend_warrior');
             }
         }
 
         // Perfect Week - complete at least 1 task every day of the week
         const hasTaskEveryDay = this.stats.tasksCompletedByDay.every(count => count > 0);
         if (hasTaskEveryDay) {
-            await this.unlockAchievement('perfect_week');
+            this.unlockAchievement('perfect_week');
         }
     }
 
     // Check monthly achievements
-    async checkMonthlyAchievements() {
+    checkMonthlyAchievements() {
         // Time Master - complete 50 tasks
         if (this.stats.totalTasksCompleted >= 50) {
-            await this.unlockAchievement('time_master');
+            this.unlockAchievement('time_master');
         }
 
-        // Consistency King - complete tasks 30 days in a row
+        // Consistency King - complete tasks for 30 consecutive days
         if (this.stats.streak >= 30) {
-            await this.unlockAchievement('consistency');
+            this.unlockAchievement('consistency');
         }
     }
 
     // Check special achievements
-
-
-    // Update achievement progress
-    async updateProgress(achievementId, increment = 1) {
-        if (!this.currentUserId) {
-            console.warn('Cannot update progress: No user is logged in');
-            return;
+    checkSpecialAchievements() {
+        // Speed Runner - complete 3 tasks in an hour
+        if (this.recentCompletions.length >= 3) {
+            this.unlockAchievement('speed_runner');
         }
 
+        // Multitasker - complete tasks in 5 different categories
+        if (this.stats.categoriesUsed.size >= 5) {
+            this.unlockAchievement('multitasker');
+        }
+
+        // Priority Expert - complete 10 high priority tasks
+        if (this.stats.completedTasksByPriority.high >= 10) {
+            this.unlockAchievement('priority_expert');
+        }
+    }
+
+    // Update achievement progress
+    updateProgress(achievementId, increment = 1) {
         if (!this.achievementsProgress[achievementId]) {
             this.achievementsProgress[achievementId] = 0;
         }
 
         this.achievementsProgress[achievementId] += increment;
 
-        // Get target value for the achievement
+        // Get target value for achievement
         const achievement = achievementsList.find(a => a.id === achievementId);
         if (!achievement) return;
 
         // Check if target value has been reached
         if (this.achievementsProgress[achievementId] >= achievement.requirement) {
-            await this.unlockAchievement(achievementId);
+            this.unlockAchievement(achievementId);
         }
     }
 
-    // Unlock achievement
+    // Unlock achievement - updated to use API
     async unlockAchievement(achievementId) {
-        if (!this.currentUserId) {
-            console.warn('Cannot unlock achievement: No user is logged in');
-            return false;
-        }
-
         // Check if achievement is already unlocked
         if (this.unlockedAchievements.has(achievementId)) {
             return false;
@@ -568,54 +727,38 @@ class AchievementsService {
             return false;
         }
 
-        try {
-            // Unlock achievement on the server
-            await apiService.unlockAchievement(this.currentUserId, achievementId);
+        // Unlock achievement
+        this.unlockedAchievements.add(achievementId);
 
-            // Update local state
-            this.unlockedAchievements.add(achievementId);
+        // Add points
+        this.stats.totalPoints += achievement.points;
 
-            // Add points
-            this.stats.totalPoints += achievement.points;
+        // Save state
+        await this.saveState();
 
-            // Send achievement unlocked event
-            const event = new CustomEvent('achievement-unlocked', {
-                detail: {
-                    id: achievementId,
-                    title: achievement.title,
-                    description: achievement.description,
-                    icon: achievement.icon,
-                    points: achievement.points,
-                    userId: this.currentUserId
-                }
-            });
-            document.dispatchEvent(event);
+        // Send event for achievement unlock
+        const event = new CustomEvent('achievement-unlocked', {
+            detail: {
+                id: achievementId,
+                title: achievement.title,
+                description: achievement.description,
+                icon: achievement.icon,
+                points: achievement.points
+            }
+        });
+        document.dispatchEvent(event);
 
-            console.log(`Achievement unlocked for user ${this.currentUserId}:`,
-                achievement.title, '(+', achievement.points, 'points)');
+        console.log('Achievement unlocked:', achievement.title, '(+', achievement.points, 'points)');
 
-            return true;
-        } catch (error) {
-            console.error(`Failed to unlock achievement ${achievementId}:`, error);
-            return false;
-        }
+        return true;
     }
 
-    // Get list of all achievements with unlock information
-    getAllAchievements() {
-        if (!this.currentUserId) {
-            console.warn('Cannot get achievements: No user is logged in');
-            return achievementsList.map(achievement => ({
-                ...achievement,
-                isUnlocked: false,
-                progress: 0,
-                totalRequired: achievement.requirement
-            }));
-        }
-
-        if (!this.achievementsLoaded) {
-            // Trigger loading if not already loaded
-            this.loadUserAchievements();
+    // Get all achievements with unlocked status
+    async getAllAchievements() {
+        // Make sure we have the latest data from API
+        const userId = this.getCurrentUserId();
+        if (userId && userId !== this.currentUserId) {
+            await this.loadState();
         }
 
         return achievementsList.map(achievement => {
@@ -623,7 +766,7 @@ class AchievementsService {
             const progress = this.achievementsProgress[achievement.id] || 0;
             const totalRequired = achievement.requirement;
 
-            // Hide information about "secret" achievements until unlocked
+            // Hide info about "secret" achievements until unlocked
             if (achievement.secret && !isUnlocked) {
                 return {
                     id: achievement.id,
@@ -649,16 +792,11 @@ class AchievementsService {
     }
 
     // Get achievement statistics
-    getStats() {
-        if (!this.currentUserId) {
-            console.warn('Cannot get stats: No user is logged in');
-            return {
-                totalAchievements: achievementsList.length,
-                unlockedCount: 0,
-                progressPercentage: 0,
-                totalPoints: 0,
-                streak: 0
-            };
+    async getStats() {
+        // Make sure we have the latest data from API
+        const userId = this.getCurrentUserId();
+        if (userId && userId !== this.currentUserId) {
+            await this.loadState();
         }
 
         const totalAchievements = achievementsList.length;
@@ -675,11 +813,18 @@ class AchievementsService {
     }
 
     // Get achievements by category
-    getAchievementsByCategory() {
+    async getAchievementsByCategory() {
+        // Make sure we have the latest data from API
+        const userId = this.getCurrentUserId();
+        if (userId && userId !== this.currentUserId) {
+            await this.loadState();
+        }
+
+        const achievements = await this.getAllAchievements();
         const result = {};
 
         achievementCategories.forEach(category => {
-            result[category.id] = this.getAllAchievements().filter(
+            result[category.id] = achievements.filter(
                 achievement => achievement.category === category.id
             );
         });
@@ -689,47 +834,35 @@ class AchievementsService {
 
     // For testing: unlock random achievement
     async unlockRandomAchievement() {
-        if (!this.currentUserId) {
-            console.warn('Cannot unlock achievement: No user is logged in');
-            return false;
-        }
-
-        const lockedAchievements = achievementsList
-            .filter(a => !this.unlockedAchievements.has(a.id))
+        const achievements = await this.getAllAchievements();
+        const lockedAchievements = achievements
+            .filter(a => !a.isUnlocked)
             .map(a => a.id);
 
         if (lockedAchievements.length === 0) {
-            console.log('All achievements are already unlocked for user', this.currentUserId);
+            console.log('All achievements are already unlocked!');
             return false;
         }
 
         const randomId = lockedAchievements[Math.floor(Math.random() * lockedAchievements.length)];
-        return await this.unlockAchievement(randomId);
+        return this.unlockAchievement(randomId);
     }
 
     // Reset all achievements (for testing)
     async resetAllAchievements() {
-        if (!this.currentUserId) {
-            console.warn('Cannot reset achievements: No user is logged in');
-            return false;
-        }
-
-        try {
-            // We would need to implement a server API for this if needed
-            // For now, just reset local state
-            this.resetState();
-            await this.loadUserAchievements();
-
-            console.log('All achievements have been reset for user', this.currentUserId);
-            return true;
-        } catch (error) {
-            console.error('Failed to reset achievements:', error);
-            return false;
-        }
+        this.resetState();
+        await this.saveState();
+        console.log('All achievements have been reset');
+        return true;
     }
 }
 
 // Create and export achievements service instance
 const achievementsService = new AchievementsService();
+
+// Add service to window for debugging
+if (typeof window !== 'undefined') {
+    window.achievementsService = achievementsService;
+}
 
 export default achievementsService;

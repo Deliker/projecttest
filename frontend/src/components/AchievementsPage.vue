@@ -220,10 +220,14 @@ export default {
   },
 
   methods: {
-    loadAchievements() {
-      this.achievementsByCategory = achievementsService.getAchievementsByCategory();
-
-      this.stats = achievementsService.getStats();
+    async loadAchievements() {
+      try {
+        this.achievementsByCategory = await achievementsService.getAchievementsByCategory();
+        this.stats = await achievementsService.getStats();
+      } catch (error) {
+        console.error('Failed to load achievements:', error);
+        // Show error message if needed
+      }
     },
 
     filterAchievements(achievements) {

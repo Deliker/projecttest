@@ -66,6 +66,7 @@ export default {
 
     try {
       const response = await apiService.login({ email, password });
+      document.dispatchEvent(new Event('user-logged-in'));
 
       // Make sure we get the role from the response
       const { id, name, email: userEmail, token, role } = response.data;
@@ -97,7 +98,7 @@ export default {
     this.state.user = null;
     this.state.userId = null;
     this.state.token = null;
-
+    document.dispatchEvent(new Event('user-logged-out'));
     // Clear localStorage
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
