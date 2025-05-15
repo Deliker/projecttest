@@ -473,7 +473,7 @@
 
 <script>
 import { useI18n } from 'vue-i18n';
-import apiService from '../services/api'; // Import the API service directly
+import apiService from '../services/api';
 
 export default {
   name: 'CalendarPage',
@@ -576,7 +576,10 @@ export default {
     },
     // Watch for changes to tasks and save to localStorage
     tasks: {
-      deep: true
+      deep: true,
+      handler() {
+        this.saveTasksToLocalStorage();
+      }
     }
   },
 
@@ -632,6 +635,7 @@ export default {
         if (!userId) {
           console.log('No user ID found, using localStorage tasks only');
           this.isLoading = false;
+          this.$router.push('/auth');
           return;
         }
 
@@ -1021,6 +1025,7 @@ export default {
         }, 1000);
       }
     },
+
     async addTask() {
       // Basic validation
       if (!this.newTask.trim()) {
@@ -1041,6 +1046,7 @@ export default {
           if (!userId) {
             console.error('No user ID found in localStorage');
             alert('Please log in to create tasks');
+            this.$router.push('/auth');
             return;
           }
 
@@ -1158,11 +1164,17 @@ export default {
       }
     },
 
-    // Add these localStorage methods
+    // User-specific localStorage methods
     saveTasksToLocalStorage() {
       try {
-        localStorage.setItem('calendar_tasks', JSON.stringify(this.tasks));
-        console.log('Tasks saved to localStorage');
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+          console.log('No user ID found, skipping local task saving');
+          return;
+        }
+
+        localStorage.setItem(`calendar_tasks_${userId}`, JSON.stringify(this.tasks));
+        console.log('Tasks saved to localStorage for user:', userId);
       } catch (error) {
         console.error('Failed to save tasks to localStorage:', error);
       }
@@ -1170,7 +1182,13 @@ export default {
 
     loadTasksFromLocalStorage() {
       try {
-        const savedTasks = localStorage.getItem('calendar_tasks');
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+          console.log('No user ID found, skipping local task loading');
+          return;
+        }
+
+        const savedTasks = localStorage.getItem(`calendar_tasks_${userId}`);
         if (savedTasks) {
           const parsedTasks = JSON.parse(savedTasks);
 
@@ -1196,10 +1214,25 @@ export default {
 
           // Update the tasks object with the parsed tasks
           this.tasks = parsedTasks;
-          console.log('Tasks loaded from localStorage');
+          console.log('Tasks loaded from localStorage for user:', userId);
         }
       } catch (error) {
         console.error('Failed to load tasks from localStorage:', error);
+      }
+    },
+
+    // Migration function for legacy data
+    migrateTasksFromOldStorage() {
+      const userId = localStorage.getItem('user_id');
+      if (!userId) return;
+
+      const oldTasks = localStorage.getItem('calendar_tasks');
+      if (oldTasks && !localStorage.getItem(`calendar_tasks_${userId}`)) {
+        localStorage.setItem(`calendar_tasks_${userId}`, oldTasks);
+        console.log('Migrated tasks from old storage format to user-specific storage');
+
+        // Remove old storage key
+        localStorage.removeItem('calendar_tasks');
       }
     },
 
@@ -1238,6 +1271,7 @@ export default {
                 if (!userId) {
                   console.error('No user ID found in localStorage');
                   alert('Please log in to delete tasks');
+                  this.$router.push('/auth');
                   return;
                 }
 
@@ -1320,6 +1354,7 @@ export default {
           if (!userId) {
             console.error('No user ID found in localStorage');
             alert('Please log in to complete tasks');
+            this.$router.push('/auth');
             return;
           }
 
@@ -1575,6 +1610,9 @@ export default {
         }
 
         this.closeEditModal();
+
+        // Save changes to localStorage
+        this.saveTasksToLocalStorage();
       } catch (error) {
         console.error('Failed to update task:', error);
         alert('Failed to update task. Please try again.');
@@ -1723,6 +1761,9 @@ export default {
                 delete this.tasks[sourceKey];
                 this.closeTaskListModal();
               }
+
+              // Save changes to localStorage
+              this.saveTasksToLocalStorage();
             }, 300);
           } else {
             // Move task in local state
@@ -1740,6 +1781,9 @@ export default {
               delete this.tasks[sourceKey];
               this.closeTaskListModal();
             }
+
+            // Save changes to localStorage
+            this.saveTasksToLocalStorage();
           }
         }
       } catch (error) {
@@ -1772,6 +1816,9 @@ export default {
 
   async mounted() {
     try {
+      // Check for and migrate old tasks data
+      this.migrateTasksFromOldStorage();
+
       // First load from localStorage
       this.loadTasksFromLocalStorage();
 
@@ -1828,7 +1875,6 @@ export default {
   }
 };
 </script>
-
 <style scoped>
 .calendar-page {
   width: 100%;
