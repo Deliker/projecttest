@@ -220,24 +220,145 @@ export default {
   },
 
   methods: {
+    logAchievementsState() {
+      console.log('Текущее состояние достижений:');
+      console.log('Статистика:', this.stats);
+
+      let totalAchievements = 0;
+      let unlockedCount = 0;
+
+      // Проверяем данные по категориям
+      for (const categoryId in this.achievementsByCategory) {
+        const achievements = this.achievementsByCategory[categoryId];
+        if (Array.isArray(achievements)) {
+          totalAchievements += achievements.length;
+          unlockedCount += achievements.filter(a => a && a.isUnlocked).length;
+          console.log(`Категория ${categoryId}: загружено ${achievements.length} достижений, разблокировано ${achievements.filter(a => a && a.isUnlocked).length}`);
+        } else {
+          console.warn(`Категория ${categoryId} содержит недопустимые данные:`, achievements);
+        }
+      }
+
+      console.log(`Всего загружено ${totalAchievements} достижений, разблокировано ${unlockedCount}`);
+
+      // Проверяем на соответствие статистики
+      if (this.stats.unlockedCount !== unlockedCount) {
+        console.warn(`Несоответствие в статистике разблокированных достижений: stats.unlockedCount=${this.stats.unlockedCount}, рассчитано=${unlockedCount}`);
+      }
+    },
     async loadAchievements() {
       try {
-        this.achievementsByCategory = await achievementsService.getAchievementsByCategory();
+        console.log('Loading achievements...');
+
+        // Сбрасываем currentUserId для принудительной перезагрузки данных
+        achievementsService.currentUserId = null;
+
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Детальная обработка полученных данных
+        console.log('Fetching achievements by category...');
+        const categoryData = await achievementsService.getAchievementsByCategory();
+
+        // Проверка валидности полученных данных
+        if (!categoryData || typeof categoryData !== 'object') {
+          console.error('Invalid category data received:', categoryData);
+          throw new Error('Invalid achievement data');
+        }
+
+        // Проверяем и инициализируем данные для каждой категории
+        this.achievementsByCategory = {};
+
+        let totalAchievementsLoaded = 0;
+        let totalUnlockedLoaded = 0;
+
+        // Обрабатываем и проверяем данные для каждой категории
+        this.categories.forEach(category => {
+          const categoryId = category.id;
+          const achievements = categoryData[categoryId];
+
+          // Проверка данных категории
+          if (!Array.isArray(achievements)) {
+            console.warn(`Invalid data for category ${categoryId}, initializing empty array`);
+            this.achievementsByCategory[categoryId] = [];
+          } else {
+            // Копируем массив достижений категории
+            this.achievementsByCategory[categoryId] = [...achievements];
+
+            // Подсчитываем количество и разблокированные достижения
+            totalAchievementsLoaded += achievements.length;
+            totalUnlockedLoaded += achievements.filter(a => a && a.isUnlocked).length;
+          }
+        });
+
+        console.log(`Loaded ${totalAchievementsLoaded} achievements, ${totalUnlockedLoaded} unlocked`);
+
+        // Загружаем статистику
         this.stats = await achievementsService.getStats();
+        console.log('Achievement stats:', this.stats);
+
+        // Проверяем соответствие статистики и фактических данных
+        if (totalUnlockedLoaded !== this.stats.unlockedCount) {
+          console.warn(`Stats mismatch: stats.unlockedCount=${this.stats.unlockedCount}, actual unlocked=${totalUnlockedLoaded}`);
+        }
+
+        // Выводим детальную информацию по категориям для отладки
+        console.log('Achievement details by category:');
+        for (const categoryId in this.achievementsByCategory) {
+          const categoryAchievements = this.achievementsByCategory[categoryId];
+          if (Array.isArray(categoryAchievements)) {
+            const unlockedInCategory = categoryAchievements.filter(a => a && a.isUnlocked).length;
+
+            if (unlockedInCategory > 0) {
+              console.log(`- ${categoryId}: ${unlockedInCategory} of ${categoryAchievements.length} unlocked`);
+
+              // Выводим список разблокированных достижений в этой категории
+              const unlockedList = categoryAchievements
+                  .filter(a => a && a.isUnlocked)
+                  .map(a => `${a.id} (${a.title})`);
+
+              console.log(`  Unlocked in ${categoryId}: ${unlockedList.join(', ')}`);
+            } else {
+              console.log(`- ${categoryId}: 0 of ${categoryAchievements.length} unlocked`);
+            }
+          }
+        }
+
       } catch (error) {
-        console.error('Failed to load achievements:', error);
-        // Show error message if needed
+        console.error('Error loading achievements:', error);
+
+        // Инициализируем пустые массивы для предотвращения ошибок отображения
+        this.achievementsByCategory = {};
+        this.categories.forEach(category => {
+          this.achievementsByCategory[category.id] = [];
+        });
+
+        this.stats = {
+          unlockedCount: 0,
+          totalAchievements: achievementsService.achievementsList?.length || 0,
+          progressPercentage: 0,
+          totalPoints: 0,
+          streak: 0
+        };
       }
     },
 
     filterAchievements(achievements) {
-      if (!achievements) return [];
+      // Проверяем валидность входных данных
+      if (!Array.isArray(achievements)) {
+        console.warn('Вызов filterAchievements с недопустимыми данными:', achievements);
+        return [];
+      }
 
       return achievements.filter(achievement => {
-        const matchesSearch = !this.searchQuery ||
-            achievement.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-            achievement.description.toLowerCase().includes(this.searchQuery.toLowerCase());
+        // Базовая проверка валидности объекта
+        if (!achievement || typeof achievement !== 'object') {
+          return false;
+        }
 
+        // Фильтр по поисковому запросу
+        const matchesSearch = !this.searchQuery ||
+            (achievement.title && achievement.title.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
+            (achievement.description && achievement.description.toLowerCase().includes(this.searchQuery.toLowerCase()));
+
+        // Фильтр по статусу разблокировки
         const matchesFilter = this.filter === 'all' ||
             (this.filter === 'unlocked' && achievement.isUnlocked) ||
             (this.filter === 'locked' && !achievement.isUnlocked);
@@ -247,11 +368,22 @@ export default {
     },
 
     shouldHideAchievement(achievement) {
-      if (this.searchQuery &&
-          !achievement.title.toLowerCase().includes(this.searchQuery.toLowerCase()) &&
-          !achievement.description.toLowerCase().includes(this.searchQuery.toLowerCase())) {
+      // Проверка на валидность объекта
+      if (!achievement || typeof achievement !== 'object') {
         return true;
       }
+
+      // Фильтрация по поисковому запросу
+      if (this.searchQuery && achievement.title && achievement.description) {
+        const matchesTitle = achievement.title.toLowerCase().includes(this.searchQuery.toLowerCase());
+        const matchesDescription = achievement.description.toLowerCase().includes(this.searchQuery.toLowerCase());
+
+        if (!matchesTitle && !matchesDescription) {
+          return true;
+        }
+      }
+
+      // Фильтрация по статусу разблокировки
       if (this.filter === 'unlocked' && !achievement.isUnlocked) {
         return true;
       }
@@ -269,13 +401,22 @@ export default {
     },
 
     handleAchievementUnlocked(event) {
-      const achievementData = event.detail;
+      if (!event || !event.detail) {
+        console.warn('Invalid achievement unlock event:', event);
+        return;
+      }
 
+      const achievementData = event.detail;
+      console.log('Achievement unlocked event received:', achievementData);
+
+      // Обновить список достижений
       this.loadAchievements();
 
+      // Показать уведомление
       this.notificationData = achievementData;
       this.showNotification = true;
 
+      // Автоматически скрыть уведомление через 5 секунд
       setTimeout(() => {
         this.showNotification = false;
       }, 5000);

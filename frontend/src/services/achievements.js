@@ -226,6 +226,10 @@ class AchievementsService {
         this.currentUserId = userId;
 
         try {
+            // Сбрасываем текущее состояние перед загрузкой
+            this.unlockedAchievements = new Set();
+            this.achievementsProgress = {};
+
             // First attempt to load from API
             const achievementsFromApi = await this.loadAchievementsFromApi(userId);
 
@@ -246,41 +250,91 @@ class AchievementsService {
     // Load achievements from API
     async loadAchievementsFromApi(userId) {
         try {
-            // Get all achievements for user
+            // Получаем все достижения для пользователя
             const achievementsResponse = await apiService.getAllAchievements(userId);
             if (!achievementsResponse || !achievementsResponse.data) {
+                console.error('No data received from API');
                 return false;
             }
 
-            // Transform API data to local format
-            const achievements = achievementsResponse.data;
-            this.unlockedAchievements = new Set(achievements.map(a => a.achievementId));
-
-            // Get achievement stats
+            // Получаем статистику
             const statsResponse = await apiService.getAchievementStats(userId);
+
+            // ВАЖНО: Создаем новый Set для разблокированных достижений
+            this.unlockedAchievements = new Set();
+
+            // Сбрасываем прогресс
+            this.achievementsProgress = {};
+
+            // Получаем данные о достижениях
+            const achievements = achievementsResponse.data;
+            console.log('Raw achievements from API:', achievements);
+
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Подробный вывод и четкая обработка достижений
+            if (Array.isArray(achievements)) {
+                console.log(`Processing ${achievements.length} achievements from API`);
+
+                // Для отладки - выводим ID всех достижений
+                const achievementIds = achievements.map(a => a.achievementId).filter(Boolean);
+                console.log('Achievement IDs from API:', achievementIds);
+
+                achievements.forEach(achievement => {
+                    if (achievement && achievement.achievementId) {
+                        // Добавляем ID в сет разблокированных достижений
+                        this.unlockedAchievements.add(achievement.achievementId);
+
+                        // Находим определение достижения в нашем локальном списке
+                        const achievementDef = achievementsList.find(a => a.id === achievement.achievementId);
+                        if (achievementDef && achievementDef.requirement) {
+                            // Устанавливаем прогресс для разблокированного достижения равным требованию (100%)
+                            this.achievementsProgress[achievement.achievementId] = achievementDef.requirement;
+                        }
+                    }
+                });
+            } else {
+                console.error('Unexpected data format from API:', achievements);
+            }
+
+            // Выводим итоговый список разблокированных достижений
+            const unlockedList = [...this.unlockedAchievements];
+            console.log(`After processing: ${unlockedList.length} achievements unlocked:`, unlockedList);
+            console.log('Progress state:', this.achievementsProgress);
+
+            // Обновляем статистику из API или вычисляем, если API не вернул данных
             if (statsResponse && statsResponse.data) {
                 const apiStats = statsResponse.data;
-
-                // Update local stats from API data
                 this.stats.totalPoints = apiStats.totalPoints || 0;
                 this.stats.unlockedCount = apiStats.unlockedCount || 0;
                 this.stats.progressPercentage = apiStats.progressPercentage || 0;
+            } else {
+                console.log('No stats from API, calculating locally');
+                // Вычисляем статистику на основе локальных данных
+                this.stats.unlockedCount = this.unlockedAchievements.size;
+                this.stats.progressPercentage = Math.round((this.stats.unlockedCount / achievementsList.length) * 100);
+
+                // Вычисляем общее количество очков
+                this.stats.totalPoints = [...this.unlockedAchievements].reduce((total, id) => {
+                    const achievement = achievementsList.find(a => a.id === id);
+                    return total + (achievement ? achievement.points : 0);
+                }, 0);
             }
 
-            console.log("Loaded achievement state from API:", {
-                unlockedCount: this.unlockedAchievements.size,
-                stats: this.stats
-            });
+            // Проверяем соответствие статистики и количества разблокированных достижений
+            if (this.stats.unlockedCount !== this.unlockedAchievements.size) {
+                console.warn(`Stats mismatch: API reports ${this.stats.unlockedCount} unlocked achievements, but we have ${this.unlockedAchievements.size} locally`);
+                // Исправляем несоответствие
+                this.stats.unlockedCount = this.unlockedAchievements.size;
+            }
 
+            console.log('Final achievement stats:', this.stats);
             return true;
         } catch (error) {
             console.error('Failed to load achievements from API:', error);
             return false;
         }
     }
-
     // Load achievements from localStorage (fallback)
-    loadFromLocalStorage(userId) {
+    loadFromLocalStorage() {
         try {
             // Use user-specific keys for localStorage
             const achievementsKey = this.getUserStorageKey('achievements');
@@ -395,7 +449,7 @@ class AchievementsService {
     }
 
     // Save achievements to localStorage (backup)
-    saveToLocalStorage(userId) {
+    saveToLocalStorage() {
         try {
             // Use user-specific keys for localStorage
             const achievementsKey = this.getUserStorageKey('achievements');
@@ -717,6 +771,7 @@ class AchievementsService {
     async unlockAchievement(achievementId) {
         // Check if achievement is already unlocked
         if (this.unlockedAchievements.has(achievementId)) {
+            console.log(`Achievement ${achievementId} is already unlocked`);
             return false;
         }
 
@@ -732,6 +787,9 @@ class AchievementsService {
 
         // Add points
         this.stats.totalPoints += achievement.points;
+
+        // Update progress to completed
+        this.achievementsProgress[achievementId] = achievement.requirement;
 
         // Save state
         await this.saveState();
@@ -755,40 +813,83 @@ class AchievementsService {
 
     // Get all achievements with unlocked status
     async getAllAchievements() {
-        // Make sure we have the latest data from API
-        const userId = this.getCurrentUserId();
-        if (userId && userId !== this.currentUserId) {
-            await this.loadState();
-        }
-
-        return achievementsList.map(achievement => {
-            const isUnlocked = this.unlockedAchievements.has(achievement.id);
-            const progress = this.achievementsProgress[achievement.id] || 0;
-            const totalRequired = achievement.requirement;
-
-            // Hide info about "secret" achievements until unlocked
-            if (achievement.secret && !isUnlocked) {
-                return {
-                    id: achievement.id,
-                    category: achievement.category,
-                    title: "???",
-                    description: "Secret achievement",
-                    icon: "❓",
-                    isUnlocked: false,
-                    progress: 0,
-                    totalRequired: 1,
-                    secret: true,
-                    points: 0
-                };
+        try {
+            // Убедимся, что у нас самые свежие данные
+            const userId = this.getCurrentUserId();
+            if (userId && userId !== this.currentUserId) {
+                await this.loadState();
             }
 
-            return {
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Подробное логирование и проверки
+            console.log('Getting all achievements. Currently unlocked:',
+                [...this.unlockedAchievements]);
+
+            // Проверка на валидность unlockedAchievements
+            if (!(this.unlockedAchievements instanceof Set)) {
+                console.error('unlockedAchievements is not a Set! Current value:', this.unlockedAchievements);
+                this.unlockedAchievements = new Set(Array.isArray(this.unlockedAchievements)
+                    ? this.unlockedAchievements
+                    : []);
+                console.log('Converted unlockedAchievements to a Set:', [...this.unlockedAchievements]);
+            }
+
+            // Формируем полный список достижений с информацией о разблокировке
+            const allAchievements = achievementsList.map(achievement => {
+                // Проверяем, разблокировано ли достижение
+                const isUnlocked = this.unlockedAchievements.has(achievement.id);
+
+                // Устанавливаем прогресс
+                let progress = this.achievementsProgress[achievement.id] || 0;
+
+                // Для разблокированных достижений устанавливаем максимальный прогресс
+                if (isUnlocked && typeof achievement.requirement === 'number') {
+                    progress = achievement.requirement;
+                }
+
+                // Для секретных достижений скрываем информацию
+                if (achievement.secret && !isUnlocked) {
+                    return {
+                        id: achievement.id,
+                        category: achievement.category,
+                        title: "???",
+                        description: "Secret achievement",
+                        icon: "❓",
+                        isUnlocked: false,
+                        progress: 0,
+                        totalRequired: 1,
+                        secret: true,
+                        points: 0
+                    };
+                }
+
+                // Возвращаем полную информацию о достижении
+                return {
+                    ...achievement,
+                    isUnlocked,
+                    progress,
+                    totalRequired: achievement.requirement
+                };
+            });
+
+            // Подсчитываем разблокированные достижения
+            const unlockedCount = allAchievements.filter(a => a.isUnlocked).length;
+            console.log(`getAllAchievements: Total ${allAchievements.length} achievements, ${unlockedCount} unlocked`);
+
+            // Дополнительно выводим список разблокированных достижений для отладки
+            const unlockedList = allAchievements.filter(a => a.isUnlocked).map(a => a.id);
+            console.log('Unlocked achievements list:', unlockedList);
+
+            return allAchievements;
+        } catch (error) {
+            console.error('Error getting all achievements:', error);
+            // В случае ошибки возвращаем базовый список без информации о разблокировке
+            return achievementsList.map(achievement => ({
                 ...achievement,
-                isUnlocked,
-                progress,
-                totalRequired
-            };
-        });
+                isUnlocked: false,
+                progress: 0,
+                totalRequired: achievement.requirement
+            }));
+        }
     }
 
     // Get achievement statistics
@@ -814,22 +915,66 @@ class AchievementsService {
 
     // Get achievements by category
     async getAchievementsByCategory() {
-        // Make sure we have the latest data from API
-        const userId = this.getCurrentUserId();
-        if (userId && userId !== this.currentUserId) {
-            await this.loadState();
+        try {
+            // Убедимся, что у нас самые свежие данные
+            const userId = this.getCurrentUserId();
+            if (userId && userId !== this.currentUserId) {
+                await this.loadState();
+            }
+
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Получаем список всех достижений и проводим детальную проверку
+            console.log('Getting achievements by category...');
+            const allAchievements = await this.getAllAchievements();
+
+            if (!Array.isArray(allAchievements)) {
+                console.error('getAllAchievements did not return an array:', allAchievements);
+                throw new Error('Invalid achievements data');
+            }
+
+            console.log(`Processing ${allAchievements.length} achievements for categorization`);
+
+            // Создаем объект результата с пустыми массивами для категорий
+            const result = {};
+            achievementCategories.forEach(category => {
+                result[category.id] = [];
+            });
+
+            // Распределяем достижения по категориям
+            let categorizedCount = 0;
+            allAchievements.forEach(achievement => {
+                if (achievement && achievement.category && result[achievement.category]) {
+                    result[achievement.category].push(achievement);
+                    categorizedCount++;
+                } else if (achievement) {
+                    console.warn('Achievement with unknown category:', achievement);
+                }
+            });
+
+            // Проверяем, все ли достижения были распределены
+            if (categorizedCount !== allAchievements.length) {
+                console.warn(`Mismatch in categorization: ${categorizedCount} achievements categorized out of ${allAchievements.length}`);
+            }
+
+            // Выводим статистику по категориям
+            console.log('Achievements by category:');
+            for (const categoryId in result) {
+                if (Array.isArray(result[categoryId])) {
+                    const categoryAchievements = result[categoryId];
+                    const unlockedInCategory = categoryAchievements.filter(a => a.isUnlocked).length;
+                    console.log(`- ${categoryId}: ${categoryAchievements.length} total, ${unlockedInCategory} unlocked`);
+                }
+            }
+
+            return result;
+        } catch (error) {
+            console.error('Error getting achievements by category:', error);
+            // В случае ошибки возвращаем пустые массивы для категорий
+            const fallbackResult = {};
+            achievementCategories.forEach(category => {
+                fallbackResult[category.id] = [];
+            });
+            return fallbackResult;
         }
-
-        const achievements = await this.getAllAchievements();
-        const result = {};
-
-        achievementCategories.forEach(category => {
-            result[category.id] = achievements.filter(
-                achievement => achievement.category === category.id
-            );
-        });
-
-        return result;
     }
 
     // For testing: unlock random achievement
