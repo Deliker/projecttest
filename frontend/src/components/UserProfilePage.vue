@@ -616,8 +616,13 @@ export default {
 
     avatarStyle() {
       if (this.userData.avatarUrl) {
+        // Check if the URL already includes http:// or https://
+        const avatarUrl = this.userData.avatarUrl.startsWith('http')
+            ? this.userData.avatarUrl
+            : `http://localhost:8081${this.userData.avatarUrl}`;
+
         return {
-          backgroundImage: `url(${this.userData.avatarUrl})`,
+          backgroundImage: `url(${avatarUrl})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         };
