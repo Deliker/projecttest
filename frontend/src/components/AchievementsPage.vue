@@ -30,7 +30,7 @@
             <div class="stat-item">
               <div class="streak-counter">
                 <div class="streak-icon">🔥</div>
-                <div class="streak-value">{{ stats.streak }}</div>
+                <div class="streak-value">{{ stats.streak || 0 }}</div>
               </div>
               <span class="stat-label">{{ $t('achievements.stats.streak') }}</span>
             </div>
@@ -66,8 +66,32 @@
       </div>
     </div>
 
-    <div class="achievements-grid">
-      <div class="achievement-category" v-for="category in categories" :key="category.id">
+    <!-- Loading state -->
+    <div v-if="isLoading" class="achievements-loading">
+      <div class="loading-spinner"></div>
+      <p>{{ $t('achievements.loading') }}</p>
+    </div>
+
+    <!-- Error state -->
+    <div v-else-if="error" class="achievements-error">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <h3>{{ $t('achievements.error.title') }}</h3>
+      <p>{{ error }}</p>
+      <button class="retry-btn" @click="loadAchievements">{{ $t('achievements.error.retry') }}</button>
+    </div>
+
+    <!-- Success state with achievements -->
+    <div v-else class="achievements-grid">
+      <div
+          class="achievement-category"
+          v-for="category in categories"
+          :key="category.id"
+          v-show="hasCategoryAchievements(category.id)"
+      >
         <div class="category-header">
           <div class="category-icon">{{ category.icon }}</div>
           <h2 class="category-title">{{ $t(`achievements.categories.${category.id}`) }}</h2>
@@ -75,14 +99,14 @@
 
         <transition-group name="achievement-list" tag="div" class="achievements-list">
           <div
-              v-for="achievement in filterAchievements(achievementsByCategory[category.id])"
+              v-for="achievement in filterAchievements(achievementsByCategory[category.id] || [])"
               :key="achievement.id"
               class="achievement-card"
               :class="{
-              'locked': !achievement.isUnlocked,
-              'secret': achievement.secret && !achievement.isUnlocked,
-              'achievement-hidden': shouldHideAchievement(achievement)
-            }"
+                'locked': !achievement.isUnlocked,
+                'secret': achievement.secret && !achievement.isUnlocked
+              }"
+              v-show="!shouldHideAchievement(achievement)"
           >
             <div class="achievement-card-inner">
               <div class="achievement-icon" :class="{'locked-icon': !achievement.isUnlocked}">{{ achievement.icon }}</div>
@@ -143,26 +167,8 @@
       </div>
     </div>
 
-    <transition name="notification-slide">
-      <div v-if="showNotification" class="achievement-notification">
-        <div class="achievement-notification-content">
-          <div class="achievement-icon">{{ notificationData.icon }}</div>
-          <div class="achievement-text">
-            <div class="achievement-title">{{ $t('achievements.unlocked') }}</div>
-            <div class="achievement-name">{{ notificationData.title }}</div>
-            <div class="achievement-description">{{ notificationData.description }}</div>
-            <div class="achievement-points">+{{ notificationData.points }} pts</div>
-          </div>
-          <button @click="showNotification = false" class="notification-close" aria-label="Close notification">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </transition>
-
-  <div v-if="isDevMode" class="debug-panel">
+    <!-- Debug Panel for Development Mode -->
+    <div v-if="isDevMode" class="debug-panel">
       <button class="debug-btn unlock-random" @click="unlockRandomAchievement">
         Unlock Random Achievement
       </button>
@@ -170,13 +176,20 @@
         Reset All Achievements
       </button>
     </div>
+
+    <!-- Add the AchievementNotification component -->
+    <AchievementNotification />
   </div>
 </template>
 
 <script>
 import achievementsService, { achievementCategories } from '@/services/achievements';
+import AchievementNotification from '@/components/AchievementsNotification.vue';
 
 export default {
+  components: {
+    AchievementNotification
+  },
   data() {
     return {
       searchQuery: '',
@@ -195,22 +208,22 @@ export default {
         totalPoints: 0,
         streak: 0
       },
-      showNotification: false,
-      notificationData: {
-        id: '',
-        title: '',
-        description: '',
-        icon: '🏆',
-        points: 0
-      },
+      isLoading: true,
+      error: null,
       isDevMode: process.env.NODE_ENV === 'development'
     };
   },
 
   computed: {
     showEmptyState() {
+      // If loading or has error, don't show empty state
+      if (this.isLoading || this.error) {
+        return false;
+      }
+
+      // Check if any achievements are visible after filtering
       for (const categoryId in this.achievementsByCategory) {
-        const filteredAchievements = this.filterAchievements(this.achievementsByCategory[categoryId]);
+        const filteredAchievements = this.filterAchievements(this.achievementsByCategory[categoryId] || []);
         if (filteredAchievements.length > 0) {
           return false;
         }
@@ -220,170 +233,62 @@ export default {
   },
 
   methods: {
-    logAchievementsState() {
-      console.log('Текущее состояние достижений:');
-      console.log('Статистика:', this.stats);
-
-      let totalAchievements = 0;
-      let unlockedCount = 0;
-
-      // Проверяем данные по категориям
-      for (const categoryId in this.achievementsByCategory) {
-        const achievements = this.achievementsByCategory[categoryId];
-        if (Array.isArray(achievements)) {
-          totalAchievements += achievements.length;
-          unlockedCount += achievements.filter(a => a && a.isUnlocked).length;
-          console.log(`Категория ${categoryId}: загружено ${achievements.length} достижений, разблокировано ${achievements.filter(a => a && a.isUnlocked).length}`);
-        } else {
-          console.warn(`Категория ${categoryId} содержит недопустимые данные:`, achievements);
-        }
-      }
-
-      console.log(`Всего загружено ${totalAchievements} достижений, разблокировано ${unlockedCount}`);
-
-      // Проверяем на соответствие статистики
-      if (this.stats.unlockedCount !== unlockedCount) {
-        console.warn(`Несоответствие в статистике разблокированных достижений: stats.unlockedCount=${this.stats.unlockedCount}, рассчитано=${unlockedCount}`);
-      }
-    },
     async loadAchievements() {
+      this.isLoading = true;
+      this.error = null;
+
       try {
-        console.log('Loading achievements...');
+        // Load achievements by category
+        this.achievementsByCategory = await achievementsService.getAchievementsByCategory();
 
-        // Сбрасываем currentUserId для принудительной перезагрузки данных
-        achievementsService.currentUserId = null;
-
-        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Детальная обработка полученных данных
-        console.log('Fetching achievements by category...');
-        const categoryData = await achievementsService.getAchievementsByCategory();
-
-        // Проверка валидности полученных данных
-        if (!categoryData || typeof categoryData !== 'object') {
-          console.error('Invalid category data received:', categoryData);
-          throw new Error('Invalid achievement data');
-        }
-
-        // Проверяем и инициализируем данные для каждой категории
-        this.achievementsByCategory = {};
-
-        let totalAchievementsLoaded = 0;
-        let totalUnlockedLoaded = 0;
-
-        // Обрабатываем и проверяем данные для каждой категории
-        this.categories.forEach(category => {
-          const categoryId = category.id;
-          const achievements = categoryData[categoryId];
-
-          // Проверка данных категории
-          if (!Array.isArray(achievements)) {
-            console.warn(`Invalid data for category ${categoryId}, initializing empty array`);
-            this.achievementsByCategory[categoryId] = [];
-          } else {
-            // Копируем массив достижений категории
-            this.achievementsByCategory[categoryId] = [...achievements];
-
-            // Подсчитываем количество и разблокированные достижения
-            totalAchievementsLoaded += achievements.length;
-            totalUnlockedLoaded += achievements.filter(a => a && a.isUnlocked).length;
-          }
-        });
-
-        console.log(`Loaded ${totalAchievementsLoaded} achievements, ${totalUnlockedLoaded} unlocked`);
-
-        // Загружаем статистику
+        // Load stats
         this.stats = await achievementsService.getStats();
-        console.log('Achievement stats:', this.stats);
 
-        // Проверяем соответствие статистики и фактических данных
-        if (totalUnlockedLoaded !== this.stats.unlockedCount) {
-          console.warn(`Stats mismatch: stats.unlockedCount=${this.stats.unlockedCount}, actual unlocked=${totalUnlockedLoaded}`);
-        }
-
-        // Выводим детальную информацию по категориям для отладки
-        console.log('Achievement details by category:');
-        for (const categoryId in this.achievementsByCategory) {
-          const categoryAchievements = this.achievementsByCategory[categoryId];
-          if (Array.isArray(categoryAchievements)) {
-            const unlockedInCategory = categoryAchievements.filter(a => a && a.isUnlocked).length;
-
-            if (unlockedInCategory > 0) {
-              console.log(`- ${categoryId}: ${unlockedInCategory} of ${categoryAchievements.length} unlocked`);
-
-              // Выводим список разблокированных достижений в этой категории
-              const unlockedList = categoryAchievements
-                  .filter(a => a && a.isUnlocked)
-                  .map(a => `${a.id} (${a.title})`);
-
-              console.log(`  Unlocked in ${categoryId}: ${unlockedList.join(', ')}`);
-            } else {
-              console.log(`- ${categoryId}: 0 of ${categoryAchievements.length} unlocked`);
-            }
-          }
-        }
-
+        this.isLoading = false;
       } catch (error) {
         console.error('Error loading achievements:', error);
-
-        // Инициализируем пустые массивы для предотвращения ошибок отображения
-        this.achievementsByCategory = {};
-        this.categories.forEach(category => {
-          this.achievementsByCategory[category.id] = [];
-        });
-
-        this.stats = {
-          unlockedCount: 0,
-          totalAchievements: achievementsService.achievementsList?.length || 0,
-          progressPercentage: 0,
-          totalPoints: 0,
-          streak: 0
-        };
+        this.error = this.$t('achievements.error.message');
+        this.isLoading = false;
       }
     },
 
     filterAchievements(achievements) {
-      // Проверяем валидность входных данных
       if (!Array.isArray(achievements)) {
-        console.warn('Вызов filterAchievements с недопустимыми данными:', achievements);
         return [];
       }
 
       return achievements.filter(achievement => {
-        // Базовая проверка валидности объекта
-        if (!achievement || typeof achievement !== 'object') {
-          return false;
-        }
-
-        // Фильтр по поисковому запросу
-        const matchesSearch = !this.searchQuery ||
+        // Filter by search query
+        const searchMatch = !this.searchQuery ||
             (achievement.title && achievement.title.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
             (achievement.description && achievement.description.toLowerCase().includes(this.searchQuery.toLowerCase()));
 
-        // Фильтр по статусу разблокировки
-        const matchesFilter = this.filter === 'all' ||
+        // Filter by unlock status
+        const statusMatch = this.filter === 'all' ||
             (this.filter === 'unlocked' && achievement.isUnlocked) ||
             (this.filter === 'locked' && !achievement.isUnlocked);
 
-        return matchesSearch && matchesFilter;
+        return searchMatch && statusMatch;
       });
     },
 
     shouldHideAchievement(achievement) {
-      // Проверка на валидность объекта
-      if (!achievement || typeof achievement !== 'object') {
+      // Should never happen, but check for null/undefined
+      if (!achievement) {
         return true;
       }
 
-      // Фильтрация по поисковому запросу
-      if (this.searchQuery && achievement.title && achievement.description) {
-        const matchesTitle = achievement.title.toLowerCase().includes(this.searchQuery.toLowerCase());
-        const matchesDescription = achievement.description.toLowerCase().includes(this.searchQuery.toLowerCase());
+      // Hide based on search query
+      if (this.searchQuery) {
+        const matchesTitle = achievement.title?.toLowerCase().includes(this.searchQuery.toLowerCase()) || false;
+        const matchesDescription = achievement.description?.toLowerCase().includes(this.searchQuery.toLowerCase()) || false;
 
         if (!matchesTitle && !matchesDescription) {
           return true;
         }
       }
 
-      // Фильтрация по статусу разблокировки
+      // Hide based on filter
       if (this.filter === 'unlocked' && !achievement.isUnlocked) {
         return true;
       }
@@ -395,54 +300,41 @@ export default {
       return false;
     },
 
+    hasCategoryAchievements(categoryId) {
+      const achievements = this.achievementsByCategory[categoryId] || [];
+      return this.filterAchievements(achievements).length > 0;
+    },
+
     resetFilters() {
       this.searchQuery = '';
       this.filter = 'all';
     },
 
-    handleAchievementUnlocked(event) {
-      if (!event || !event.detail) {
-        console.warn('Invalid achievement unlock event:', event);
-        return;
-      }
-
-      const achievementData = event.detail;
-      console.log('Achievement unlocked event received:', achievementData);
-
-      // Обновить список достижений
-      this.loadAchievements();
-
-      // Показать уведомление
-      this.notificationData = achievementData;
-      this.showNotification = true;
-
-      // Автоматически скрыть уведомление через 5 секунд
-      setTimeout(() => {
-        this.showNotification = false;
-      }, 5000);
-    },
-
-    unlockRandomAchievement() {
-      achievementsService.unlockRandomAchievement();
-      this.loadAchievements();
-    },
-
-    resetAllAchievements() {
-      if (confirm('Are you sure you want to reset all achievements? This cannot be undone!')) {
-        achievementsService.resetAllAchievements();
+    async unlockRandomAchievement() {
+      try {
+        await achievementsService.unlockRandomAchievement();
+        // Reload achievements to reflect changes
         this.loadAchievements();
+      } catch (error) {
+        console.error('Error unlocking random achievement:', error);
+      }
+    },
+
+    async resetAllAchievements() {
+      if (confirm(this.$t('achievements.confirmReset'))) {
+        try {
+          await achievementsService.resetAllAchievements();
+          // Reload achievements to reflect changes
+          this.loadAchievements();
+        } catch (error) {
+          console.error('Error resetting achievements:', error);
+        }
       }
     }
   },
 
-  mounted() {
-    this.loadAchievements();
-
-    document.addEventListener('achievement-unlocked', this.handleAchievementUnlocked);
-  },
-
-  beforeUnmount() {
-    document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
+  async mounted() {
+    await this.loadAchievements();
   }
 };
 </script>
@@ -599,6 +491,32 @@ export default {
 .search-box {
   position: relative;
   max-width: 300px;
+  width: 100%;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  transition: all var(--transition-medium);
+}
+
+.search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.1);
+  outline: none;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
 }
 
 .filter-container {
@@ -628,6 +546,63 @@ export default {
   font-weight: 500;
 }
 
+/* Loading & Error states */
+.achievements-loading,
+.achievements-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  background: var(--color-card-bg);
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(var(--color-primary-rgb), 0.1);
+  border-top: 3px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1.5rem;
+}
+
+.achievements-error svg {
+  color: var(--color-danger);
+  margin-bottom: 1rem;
+  width: 48px;
+  height: 48px;
+}
+
+.achievements-error h3 {
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+}
+
+.achievements-error p {
+  color: var(--color-text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.retry-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-medium);
+}
+
+.retry-btn:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+}
+
+/* Achievements Grid */
 .achievements-grid {
   display: grid;
   gap: 2.5rem;
@@ -877,70 +852,7 @@ export default {
   transform: translateY(-2px);
 }
 
-.achievement-hidden {
-  display: none;
-}
-
-.achievement-notification {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 1.5rem;
-  z-index: 100;
-  width: 350px;
-  border: 1px solid var(--color-primary);
-  animation: fadeSlideIn var(--transition-medium) forwards;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.achievement-notification-content {
-  display: flex;
-  gap: 1rem;
-  position: relative;
-}
-
-.achievement-notification .achievement-icon {
-  font-size: 3rem;
-  animation: bounce 0.5s infinite alternate;
-  background: none;
-  width: auto;
-  height: auto;
-}
-
-.achievement-notification .achievement-text {
-  flex: 1;
-}
-
-.achievement-notification .achievement-title {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 0.25rem;
-}
-
-.achievement-notification .achievement-name {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  margin-bottom: 0.25rem;
-}
-
-.achievement-notification .achievement-description {
-  font-size: 0.9rem;
-  color: var(--color-text);
-  margin-bottom: 0.5rem;
-}
-
-.achievement-notification .achievement-points {
-  font-size: 1rem;
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
+/* Debug Panel */
 .debug-panel {
   position: fixed;
   bottom: 1rem;
@@ -970,6 +882,7 @@ export default {
   color: white;
 }
 
+/* Animations */
 @keyframes fadeSlideDown {
   from {
     opacity: 0;
@@ -992,18 +905,21 @@ export default {
   }
 }
 
-@keyframes fadeSlideIn {
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateX(30px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
   }
 }
 
-@keyframes bounce {
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
   from {
     transform: scale(1);
   }
@@ -1027,17 +943,7 @@ export default {
   transition: transform var(--transition-medium);
 }
 
-.notification-slide-enter-active,
-.notification-slide-leave-active {
-  transition: all var(--transition-medium);
-}
-
-.notification-slide-enter-from,
-.notification-slide-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
-}
-
+/* Responsive styles */
 @media (max-width: 1024px) {
   .achievements-page {
     padding: 1.5rem;
@@ -1107,12 +1013,6 @@ export default {
 
   .category-title {
     font-size: 1.25rem;
-  }
-
-  .achievement-notification {
-    left: 1rem;
-    right: 1rem;
-    width: auto;
   }
 }
 </style>
