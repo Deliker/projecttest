@@ -211,12 +211,16 @@
     <transition name="modal-fade">
       <div v-if="showModal" class="modal" @click.self="closeTaskModal">
         <div class="modal-content">
+          <!-- Modal Close Button -->
           <button class="close-btn" @click="closeTaskModal" aria-label="Close modal">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+
           <h3 class="modal-title">{{ $t('calendar.modal.addTask') }}</h3>
+
+          <!-- Date Section -->
           <div class="form-group">
             <label for="task-date">{{ $t('calendar.modal.date') }}</label>
             <div class="date-picker">
@@ -231,11 +235,15 @@
               </select>
             </div>
           </div>
+
+          <!-- Task Description -->
           <div class="form-group">
             <label for="task-input">{{ $t('calendar.modal.taskDescription') }}</label>
             <input type="text" id="task-input" v-model="newTask" class="form-control"
                    :placeholder="$t('calendar.modal.whatToDo')" @keyup.enter="addTask" />
           </div>
+
+          <!-- Task Duration -->
           <div class="form-group">
             <label for="task-duration">{{ $t('calendar.modal.taskDuration') }}</label>
             <div class="duration-selector">
@@ -257,6 +265,8 @@
               </div>
             </div>
           </div>
+
+          <!-- Priority Selection -->
           <div class="form-group">
             <label for="task-priority">{{ $t('calendar.priority') }}:</label>
             <div class="priority-selector">
@@ -272,6 +282,8 @@
               </button>
             </div>
           </div>
+
+          <!-- Category Selection -->
           <div class="form-group">
             <label>{{ $t('calendar.modal.category') }}</label>
             <div class="category-selector">
@@ -285,6 +297,17 @@
               </div>
             </div>
           </div>
+
+          <!-- THIS IS WHERE YOU ADD THE ATTACHMENT COMPONENT - for edit modal only -->
+          <div v-if="editTaskData && editTaskData.id" class="form-group attachment-section">
+            <TaskAttachments
+                :taskId="editTaskData.id"
+                @attachment-added="handleAttachmentAdded"
+                @attachment-deleted="handleAttachmentDeleted"
+            />
+          </div>
+
+          <!-- Save Button -->
           <button class="btn save-task" @click="addTask">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -292,6 +315,30 @@
               <polyline points="7 3 7 8 15 8"/>
             </svg>
             {{ $t('calendar.modal.saveTask') }}
+          </button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Edit Modal would be very similar -->
+    <transition name="modal-slide-right">
+      <div v-if="showEditModal" class="modal" @click.self="closeEditModal">
+        <div class="modal-content">
+          <!-- Modal content similar to above -->
+
+          <!-- THIS IS WHERE YOU ADD THE ATTACHMENT COMPONENT - for edit modal -->
+          <div class="form-group attachment-section">
+            <TaskAttachments
+                v-if="editTaskData.id"
+                :taskId="editTaskData.id"
+                @attachment-added="handleAttachmentAdded"
+                @attachment-deleted="handleAttachmentDeleted"
+            />
+          </div>
+
+          <!-- Save Edited Task Button -->
+          <button class="btn save-task" @click="saveEditedTask">
+            {{ $t('calendar.modal.saveChanges') }}
           </button>
         </div>
       </div>
@@ -344,6 +391,13 @@
                     <span class="task-category" :style="{ backgroundColor: `${element.categoryColor}20`, color: element.categoryColor }">
                       {{ $t(`calendar.categoryNames.${element.category}`) }}
                     </span>
+                    <span v-if="element.attachmentsCount > 0" class="task-attachments-count">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  {{ element.attachmentsCount }}
+</span>
                     <span class="task-priority" :class="`priority-badge-${element.priority}`">{{ $t(`calendar.${element.priority}`) }}</span>
 
                     <span v-if="element.duration > 0" class="task-duration">
@@ -473,6 +527,14 @@
                 <span>{{ $t(`calendar.categoryNames.${category.id}`) }}</span>
               </div>
             </div>
+          </div>
+          <div class="form-group attachment-section">
+            <TaskAttachments
+                v-if="editTaskData.id"
+                :taskId="editTaskData.id"
+                @attachment-added="handleAttachmentAdded"
+                @attachment-deleted="handleAttachmentDeleted"
+            />
           </div>
           <button class="btn save-task" @click="saveEditedTask">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -738,6 +800,7 @@ export default {
 
         // Process each task from the server
         tasksFromServer.forEach(task => {
+          task.attachmentsCount = task.attachmentsCount || 0;
           // Validate task data
           if (!task || typeof task !== 'object' || !task.year || !task.month || !task.day) {
             console.warn('Invalid task data:', task);
@@ -854,7 +917,33 @@ export default {
         return false;
       }
     },
+    handleAttachmentAdded(attachment) {
+      // Update the attachment count for this task
+      const taskId = attachment.taskId;
+      const key = `${this.editTaskData.year}-${this.editTaskData.month}-${this.editTaskData.day}`;
 
+      if (this.tasks[key]) {
+        const taskIndex = this.tasks[key].findIndex(t => t.id === taskId);
+        if (taskIndex !== -1) {
+          if (!this.tasks[key][taskIndex].attachmentsCount) {
+            this.tasks[key][taskIndex].attachmentsCount = 0;
+          }
+          this.tasks[key][taskIndex].attachmentsCount++;
+        }
+      }
+    },
+    handleAttachmentDeleted(attachment) {
+      // Update the attachment count for this task
+      const taskId = attachment.taskId;
+      const key = `${this.editTaskData.year}-${this.editTaskData.month}-${this.editTaskData.day}`;
+
+      if (this.tasks[key]) {
+        const taskIndex = this.tasks[key].findIndex(t => t.id === taskId);
+        if (taskIndex !== -1 && this.tasks[key][taskIndex].attachmentsCount > 0) {
+          this.tasks[key][taskIndex].attachmentsCount--;
+        }
+      }
+    },
     previousMonth() {
       if (this.selectedMonth > 0) {
         this.selectedMonth -= 1;
@@ -3691,6 +3780,23 @@ export default {
 
   .task-duration, .timer-countdown {
     max-width: 120px;
+  }
+  .task-attachments-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    background: rgba(var(--color-primary-rgb), 0.1);
+    color: var(--color-primary);
+    transition: all 0.3s ease;
+  }
+
+  .attachment-section {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: 1rem;
   }
 }
 </style>

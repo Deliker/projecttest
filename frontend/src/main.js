@@ -4,11 +4,13 @@ import { createRouter, createWebHistory } from 'vue-router';
 import i18n from './i18n';
 
 // Import CSS
-
 import './assets/styles/main.css';
 
 // Import services
 import auth from './services/auth';
+
+// Import the TaskAttachments component
+import TaskAttachments from './components/TaskAttachments.vue';
 
 // Import components
 import HomePage from './components/HomePage.vue';
@@ -17,7 +19,6 @@ import AchievementsPage from './components/AchievementsPage.vue';
 import AuthPage from './components/AuthPage.vue';
 import UserProfilePage from './components/UserProfilePage.vue';
 import AdminPanel from "./components/AdminPanel.vue";
-
 
 // Initialize auth service
 auth.init();
@@ -93,7 +94,6 @@ const routes = [
         beforeEnter: requireAdminAuth,
         meta: { title: 'Admin Panel - TaskMaster' }
     }
-
 ];
 
 const router = createRouter({
@@ -107,7 +107,6 @@ const router = createRouter({
         }
     }
 });
-
 
 // Update document title based on route meta and current language
 router.afterEach((to) => {
@@ -130,6 +129,9 @@ router.afterEach((to) => {
 
 // Create Vue app
 const app = createApp(App);
+
+// Register TaskAttachments component globally
+app.component('TaskAttachments', TaskAttachments);
 
 // Global properties
 app.config.globalProperties.$auth = auth.state;

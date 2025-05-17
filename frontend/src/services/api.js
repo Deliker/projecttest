@@ -30,24 +30,29 @@ export default {
   register(userData) {
     return apiClient.post('/auth/register', userData);
   },
-  uploadTaskAttachment(file, taskId) {
+  uploadTaskAttachment(file, taskId, userId) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('taskId', taskId);
+    formData.append('userId', userId);
 
-    return axios.post('/api/attachments/upload', formData, {
+    return apiClient.post('/attachments/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
   },
   getTaskAttachments(taskId) {
-    return axios.get(`/api/attachments/task/${taskId}`);
+    return apiClient.get(`/attachments/task/${taskId}`);
   },
-
+  downloadAttachment(attachmentId) {
+    return apiClient.get(`/attachments/download/${attachmentId}`, {
+      responseType: 'blob'
+    });
+  },
 // Delete an attachment
   deleteAttachment(attachmentId) {
-    return axios.delete(`/api/attachments/${attachmentId}`);
+    return apiClient.delete(`/attachments/${attachmentId}`);
   },
   login(credentials) {
     return apiClient.post('/auth/login', credentials);
@@ -74,7 +79,7 @@ export default {
   getUserInfo(userId) {
     return apiClient.get(`/auth/user?userId=${userId}`);
   },
-  
+
   // Task endpoints
   getAllTasks(userId) {
     return apiClient.get(`/tasks?userId=${userId}`);
