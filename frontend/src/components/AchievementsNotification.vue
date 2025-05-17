@@ -40,20 +40,30 @@ export default {
     };
   },
   mounted() {
-    // Ensure we only register the event listener once
-    if (!this.isMounted) {
-      this.isMounted = true;
+    // Ensure we only register the event listener once by using a window-level check
+    if (!window.achievementListenerRegistered) {
+      // Add a flag to window to track if the listener is already registered
+      window.achievementListenerRegistered = true;
+
       // Remove any existing listeners first to avoid duplicates
       document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
+
       // Add the event listener
       document.addEventListener('achievement-unlocked', this.handleAchievementUnlocked);
-      console.log('🏆 Achievement notification listener registered');
+      console.log('🏆 Achievement notification listener registered (singleton)');
+    } else {
+      console.log('🏆 Achievement notification listener already registered, skipping');
     }
+
+    this.isMounted = true;
   },
   beforeUnmount() {
-    // Clean up event listener
-    document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
-    console.log('🏆 Achievement notification listener removed');
+    // Only remove event listener if this is the original instance that added it
+    if (this.isMounted && window.achievementListenerRegistered) {
+      document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
+      window.achievementListenerRegistered = false;
+      console.log('🏆 Achievement notification listener removed');
+    }
 
     // Clear any pending timeout
     if (this.timeoutId) {

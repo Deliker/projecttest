@@ -7,6 +7,7 @@ export default {
         calendar: 'Kalendārs',
         achievements: 'Sasniegumi',
         about: 'Par mums',
+        categories: 'Kategorijas',
         login: 'Pieslēgties',
         signup: 'Reģistrēties',
         logout: 'Iziet',
@@ -119,7 +120,9 @@ export default {
         },
         timer: {
             expired: 'Taimeris beidzies',
-            timeOver: 'Laiks šim uzdevumam ir beidzies!'
+            timeOver: 'Laiks šim uzdevumam ir beidzies!',
+            approaching: 'Tuvojas laika beigas!',
+            minutesRemaining: 'minūtes atlikušas'
         }
     },
 
@@ -154,7 +157,14 @@ export default {
             subtitle: 'Mēģiniet pielāgot meklēšanas vai filtrēšanas kritērijus',
             reset: 'Atiestatīt filtrus'
         },
-        unlocked: 'Sasniegums atbloķēts!'
+        unlocked: 'Sasniegums atbloķēts!',
+        loading: 'Ielāde sasniegumu...',
+        error: {
+            title: 'Kļūda ielādējot sasniegumus',
+            message: 'Neizdevās ielādēt sasniegumus. Lūdzu, mēģiniet vēlreiz.',
+            retry: 'Mēģināt vēlreiz'
+        },
+        confirmReset: 'Vai tiešām vēlaties atiestatīt visus sasniegumus? Šo darbību nevar atsaukt.'
     },
 
     // Auth Page
@@ -211,9 +221,15 @@ export default {
         edit: 'Rediģēt profilu',
         saveChanges: 'Saglabāt izmaiņas',
         personalInfo: 'Personīgā informācija',
+        personal: 'Personīgi',
         nameLabel: 'Jūsu vārds',
         jobTitleLabel: 'Amats',
         locationLabel: 'Atrašanās vieta',
+        locationPlaceholder: 'Ievadiet savu atrašanās vietu',
+        noLocation: 'Atrašanās vieta nav norādīta',
+        emailLabel: 'E-pasts',
+        memberSince: 'Dalībnieks kopš',
+        online: 'Tiešsaistē',
         bioTitle: 'Par mani',
         noBio: 'Vēl nav pievienota informācija par sevi. Pastāstiet par sevi!',
         bioPlaceholder: 'Uzrakstiet kaut ko par sevi...',
@@ -223,18 +239,30 @@ export default {
         achievements: 'Sasniegumi',
         achievementPoints: 'Sasniegumu punkti',
         completionRate: 'Pabeigšanas rādītājs',
+        viewAllStats: 'Skatīt visu statistiku',
         preferences: 'Preferences',
         theme: 'Tēma',
         darkTheme: 'Tumša',
         lightTheme: 'Gaiša',
+        language: 'Valoda',
+        notifications: 'Paziņojumi',
+        emailNotifications: 'E-pasta paziņojumi',
+        taskReminders: 'Uzdevumu atgādinājumi',
         security: 'Drošība',
+        secure: 'Droši',
         changePassword: 'Mainīt paroli',
+        passwordTitle: 'Parole',
+        passwordSubtitle: 'Regulāri mainiet savu paroli labākai drošībai',
+        twoFactorTitle: 'Divu faktoru autentifikācija',
+        twoFactorSubtitle: 'Pievienojiet papildu drošības līmeni savam kontam',
         currentPassword: 'Pašreizējā parole',
         newPassword: 'Jaunā parole',
         confirmPassword: 'Apstipriniet jauno paroli',
         currentPasswordPlaceholder: 'Ievadiet pašreizējo paroli',
         newPasswordPlaceholder: 'Ievadiet jauno paroli',
         confirmPasswordPlaceholder: 'Apstipriniet jauno paroli',
+        passwordStrength: 'Paroles stiprums',
+        passwordMismatch: 'Paroles nesakrīt',
         cancel: 'Atcelt',
         updatePassword: 'Atjaunināt paroli',
         errors: {
@@ -248,7 +276,101 @@ export default {
         passwordChangeSuccess: 'Parole veiksmīgi mainīta!'
     },
 
-    //About Page
+    // Admin Panel
+    admin: {
+        title: 'Administrācijas panelis',
+        subtitle: 'Pārvaldiet lietotājus, skatiet statistiku un konfigurējiet sistēmas iestatījumus',
+        tabs: {
+            users: 'Lietotāji',
+            dashboard: 'Panelis',
+            settings: 'Iestatījumi'
+        },
+        users: {
+            title: 'Lietotāju pārvaldība',
+            search: 'Meklēt lietotājus...',
+            name: 'Vārds',
+            email: 'E-pasts',
+            role: 'Loma',
+            lastActive: 'Pēdējā aktivitāte',
+            actions: 'Darbības',
+            confirmDelete: 'Apstiprināt lietotāja dzēšanu',
+            deleteWarning: 'Šo darbību nevar atsaukt. Tas neatgriezeniski dzēsīs lietotāja kontu un visus saistītos datus.'
+        },
+        roles: {
+            user: 'Lietotājs',
+            admin: 'Administrators'
+        },
+        actions: {
+            view: 'Skatīt',
+            edit: 'Rediģēt',
+            delete: 'Dzēst',
+            confirm: 'Apstiprināt',
+            cancel: 'Atcelt'
+        },
+        dashboard: {
+            title: 'Panelis',
+            totalUsers: 'Kopējais lietotāju skaits',
+            totalTasks: 'Kopējais uzdevumu skaits',
+            completedTasks: 'Pabeigtie uzdevumi',
+            totalAchievements: 'Kopējie sasniegumi'
+        },
+        settings: {
+            title: 'Sistēmas iestatījumi',
+            appName: 'Lietotnes nosaukums',
+            defaultLanguage: 'Noklusējuma valoda',
+            enableRegistration: 'Iespējot reģistrāciju',
+            saveSettings: 'Saglabāt iestatījumus'
+        },
+        errors: {
+            loadUsers: 'Neizdevās ielādēt lietotājus. Lūdzu, mēģiniet vēlreiz.'
+        }
+    },
+
+    // Categories Management
+    categories: {
+        manage: 'Pārvaldīt kategorijas',
+        add: 'Pievienot kategoriju',
+        loading: 'Ielāde kategorijas...',
+        default: 'Noklusējuma kategorijas',
+        custom: 'Pielāgotās kategorijas',
+        system: 'Sistēmas',
+        noCustom: 'Pagaidām nav pielāgoto kategoriju. Izveidojiet savu pirmo!',
+        createFirst: 'Izveidot pirmo kategoriju',
+        edit: 'Rediģēt kategoriju',
+        create: 'Izveidot kategoriju',
+        nameLabel: 'Kategorijas nosaukums',
+        namePlaceholder: 'Ievadiet kategorijas nosaukumu',
+        colorLabel: 'Kategorijas krāsa',
+        cancel: 'Atcelt',
+        update: 'Atjaunināt kategoriju',
+        deleteTitle: 'Dzēst kategoriju',
+        deleteMessage: 'Vai tiešām vēlaties dzēst "{name}"?',
+        deleteWarning: 'Uzdevumi šajā kategorijā tiks pārvietoti uz kategoriju "Cits".',
+        confirmDelete: 'Dzēst',
+        errors: {
+            nameRequired: 'Kategorijas nosaukums ir obligāts',
+            colorRequired: 'Lūdzu, izvēlieties krāsu',
+            nameExists: 'Kategorija ar šādu nosaukumu jau pastāv'
+        },
+        saveError: 'Neizdevās saglabāt kategoriju',
+        loadError: 'Neizdevās ielādēt kategorijas',
+        deleteError: 'Neizdevās dzēst kategoriju'
+    },
+
+    // Task Attachments
+    attachments: {
+        title: 'Pielikumi',
+        chooseFile: 'Izvēlēties failu',
+        clear: 'Notīrīt',
+        upload: 'Augšupielādēt',
+        download: 'Lejupielādēt',
+        delete: 'Dzēst',
+        confirmDelete: 'Vai tiešām vēlaties dzēst šo pielikumu?',
+        noAttachments: 'Pagaidām nav pielikumu',
+        loading: 'Ielāde pielikumus...'
+    },
+
+    // About Page
     about: {
         titleStart: 'Par mums',
         titleAccent: 'TaskMaster',

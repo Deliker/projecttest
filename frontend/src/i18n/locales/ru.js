@@ -10,7 +10,8 @@ export default {
         login: 'Вход',
         signup: 'Регистрация',
         logout: 'Выход',
-        profile: 'Профиль'
+        profile: 'Профиль',
+        categories: 'Категории'
     },
 
     // Home Page
@@ -119,7 +120,9 @@ export default {
         },
         timer: {
             expired: 'Таймер истек',
-            timeOver: 'Время для этой задачи истекло!'
+            timeOver: 'Время для этой задачи истекло!',
+            approaching: 'Истекает время!',
+            minutesRemaining: 'минут осталось'
         }
     },
 
@@ -154,7 +157,14 @@ export default {
             subtitle: 'Попробуйте изменить параметры поиска или фильтры',
             reset: 'Сбросить фильтры'
         },
-        unlocked: 'Достижение разблокировано!'
+        unlocked: 'Достижение разблокировано!',
+        loading: 'Загрузка достижений...',
+        error: {
+            title: 'Ошибка загрузки достижений',
+            message: 'Не удалось загрузить достижения. Пожалуйста, попробуйте еще раз.',
+            retry: 'Повторить'
+        },
+        confirmReset: 'Вы уверены, что хотите сбросить все достижения? Это действие нельзя отменить.'
     },
 
     // Auth Page
@@ -211,9 +221,15 @@ export default {
         edit: 'Редактировать профиль',
         saveChanges: 'Сохранить изменения',
         personalInfo: 'Личная информация',
+        personal: 'Личное',
         nameLabel: 'Ваше имя',
         jobTitleLabel: 'Должность',
         locationLabel: 'Местоположение',
+        locationPlaceholder: 'Укажите ваше местоположение',
+        noLocation: 'Местоположение не указано',
+        emailLabel: 'Электронная почта',
+        memberSince: 'Участник с',
+        online: 'В сети',
         bioTitle: 'О себе',
         noBio: 'Информации о вас пока нет. Расскажите о себе!',
         bioPlaceholder: 'Напишите немного о себе...',
@@ -223,18 +239,30 @@ export default {
         achievements: 'Достижения',
         achievementPoints: 'Очки достижений',
         completionRate: 'Показатель выполнения',
+        viewAllStats: 'Просмотреть всю статистику',
         preferences: 'Настройки',
         theme: 'Тема',
         darkTheme: 'Темная',
         lightTheme: 'Светлая',
+        language: 'Язык',
+        notifications: 'Уведомления',
+        emailNotifications: 'Email уведомления',
+        taskReminders: 'Напоминания о задачах',
         security: 'Безопасность',
+        secure: 'Защищено',
         changePassword: 'Изменить пароль',
+        passwordTitle: 'Пароль',
+        passwordSubtitle: 'Регулярно меняйте пароль для лучшей безопасности',
+        twoFactorTitle: 'Двухфакторная аутентификация',
+        twoFactorSubtitle: 'Добавьте дополнительный уровень безопасности к вашему аккаунту',
         currentPassword: 'Текущий пароль',
         newPassword: 'Новый пароль',
         confirmPassword: 'Подтвердите новый пароль',
         currentPasswordPlaceholder: 'Введите ваш текущий пароль',
         newPasswordPlaceholder: 'Введите новый пароль',
         confirmPasswordPlaceholder: 'Подтвердите ваш новый пароль',
+        passwordStrength: 'Надежность пароля',
+        passwordMismatch: 'Пароли не совпадают',
         cancel: 'Отмена',
         updatePassword: 'Обновить пароль',
         errors: {
@@ -248,6 +276,101 @@ export default {
         passwordChangeSuccess: 'Пароль успешно изменен!'
     },
 
+    // Admin Panel
+    admin: {
+        title: 'Панель администратора',
+        subtitle: 'Управляйте пользователями, просматривайте статистику и настраивайте параметры системы',
+        tabs: {
+            users: 'Пользователи',
+            dashboard: 'Панель управления',
+            settings: 'Настройки'
+        },
+        users: {
+            title: 'Управление пользователями',
+            search: 'Поиск пользователей...',
+            name: 'Имя',
+            email: 'Email',
+            role: 'Роль',
+            lastActive: 'Последняя активность',
+            actions: 'Действия',
+            confirmDelete: 'Подтвердите удаление пользователя',
+            deleteWarning: 'Это действие нельзя отменить. Это навсегда удалит учетную запись пользователя и все связанные данные.'
+        },
+        roles: {
+            user: 'Пользователь',
+            admin: 'Администратор'
+        },
+        actions: {
+            view: 'Просмотр',
+            edit: 'Редактировать',
+            delete: 'Удалить',
+            confirm: 'Подтвердить',
+            cancel: 'Отмена'
+        },
+        dashboard: {
+            title: 'Панель управления',
+            totalUsers: 'Всего пользователей',
+            totalTasks: 'Всего задач',
+            completedTasks: 'Выполненные задачи',
+            totalAchievements: 'Всего достижений'
+        },
+        settings: {
+            title: 'Системные настройки',
+            appName: 'Название приложения',
+            defaultLanguage: 'Язык по умолчанию',
+            enableRegistration: 'Включить регистрацию',
+            saveSettings: 'Сохранить настройки'
+        },
+        errors: {
+            loadUsers: 'Не удалось загрузить пользователей. Пожалуйста, попробуйте снова.'
+        }
+    },
+
+    // Categories Management
+    categories: {
+        manage: 'Управление категориями',
+        add: 'Добавить категорию',
+        loading: 'Загрузка категорий...',
+        default: 'Категории по умолчанию',
+        custom: 'Пользовательские категории',
+        system: 'Системная',
+        noCustom: 'У вас еще нет пользовательских категорий. Создайте свою первую!',
+        createFirst: 'Создать первую категорию',
+        edit: 'Редактировать категорию',
+        create: 'Создать категорию',
+        nameLabel: 'Название категории',
+        namePlaceholder: 'Введите название категории',
+        colorLabel: 'Цвет категории',
+        cancel: 'Отмена',
+        update: 'Обновить категорию',
+        deleteTitle: 'Удалить категорию',
+        deleteMessage: 'Вы уверены, что хотите удалить "{name}"?',
+        deleteWarning: 'Задачи в этой категории будут перемещены в категорию "Другое".',
+        confirmDelete: 'Удалить',
+        errors: {
+            nameRequired: 'Название категории обязательно',
+            colorRequired: 'Пожалуйста, выберите цвет',
+            nameExists: 'Категория с таким названием уже существует'
+        },
+        saveError: 'Не удалось сохранить категорию',
+        loadError: 'Не удалось загрузить категории',
+        deleteError: 'Не удалось удалить категорию'
+    },
+
+    // Task Attachments
+    attachments: {
+        title: 'Вложения',
+        chooseFile: 'Выбрать файл',
+        clear: 'Очистить',
+        upload: 'Загрузить',
+        download: 'Скачать',
+        delete: 'Удалить',
+        confirmDelete: 'Вы уверены, что хотите удалить это вложение?',
+        noAttachments: 'Нет вложений',
+        loading: 'Загрузка вложений...'
+    },
+
+    // About Page
     about: {
         titleStart: 'О нас',
         titleAccent: 'TaskMaster',

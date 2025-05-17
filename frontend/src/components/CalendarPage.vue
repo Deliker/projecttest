@@ -627,6 +627,9 @@ export default {
     }
 
     return {
+      completedTaskIds: new Set(),
+      lastAchievementNotificationTime: 0,
+      suppressAchievementNotifications: false,
       isDevelopment: process.env.NODE_ENV === 'development',
       isTestPanelCollapsed: false,
       testTaskDescription: 'Test Task',
@@ -1802,6 +1805,14 @@ export default {
             delete this.timers[task.id];
           }
 
+          // Check if this task has already been completed
+          if (this.completedTaskIds.has(task.id)) {
+            console.log(`Task ${task.id} already completed, skipping achievement notification`);
+          } else {
+            // Add to completed tasks set
+            this.completedTaskIds.add(task.id);
+          }
+
           // Check if this is a local-only task
           const isLocalTask = task.id.toString().startsWith('local_') || task.isLocalOnly;
 
@@ -1828,10 +1839,23 @@ export default {
             setTimeout(() => {
               const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
 
-              const taskCompletedEvent = new CustomEvent('task-completed', {
-                detail: completedTask
-              });
-              document.dispatchEvent(taskCompletedEvent);
+              // Check cooldown before dispatching achievement event
+              const now = Date.now();
+              const timeSinceLastNotification = now - this.lastAchievementNotificationTime;
+              const cooldownPeriod = 5000; // 5 seconds cooldown
+
+              if (!this.suppressAchievementNotifications && timeSinceLastNotification > cooldownPeriod) {
+                // Dispatch task-completed event
+                const taskCompletedEvent = new CustomEvent('task-completed', {
+                  detail: completedTask
+                });
+                document.dispatchEvent(taskCompletedEvent);
+
+                // Update the timestamp
+                this.lastAchievementNotificationTime = now;
+              } else {
+                console.log('Achievement notification suppressed due to cooldown');
+              }
 
               if (this.tasks[key].length === 0) {
                 delete this.tasks[key];
@@ -1846,10 +1870,23 @@ export default {
           } else {
             const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
 
-            const taskCompletedEvent = new CustomEvent('task-completed', {
-              detail: completedTask
-            });
-            document.dispatchEvent(taskCompletedEvent);
+            // Same notification cooldown logic as above
+            const now = Date.now();
+            const timeSinceLastNotification = now - this.lastAchievementNotificationTime;
+            const cooldownPeriod = 5000; // 5 seconds cooldown
+
+            if (!this.suppressAchievementNotifications && timeSinceLastNotification > cooldownPeriod) {
+              // Dispatch task-completed event
+              const taskCompletedEvent = new CustomEvent('task-completed', {
+                detail: completedTask
+              });
+              document.dispatchEvent(taskCompletedEvent);
+
+              // Update the timestamp
+              this.lastAchievementNotificationTime = now;
+            } else {
+              console.log('Achievement notification suppressed due to cooldown');
+            }
 
             if (this.tasks[key].length === 0) {
               delete this.tasks[key];
@@ -1888,6 +1925,13 @@ export default {
         clearInterval(this.notificationTimer);
         this.showNotification = false;
       }, 3000);
+    },
+    suppressNotifications(duration = 5000) {
+      this.suppressAchievementNotifications = true;
+
+      setTimeout(() => {
+        this.suppressAchievementNotifications = false;
+      }, duration);
     },
 
     async editTask(task) {
@@ -2267,7 +2311,44 @@ export default {
       }
     }
   },
+  mountedAdditionalHandlers() {
+    // Включение слушателя событий о разблокировке достижений
+    document.addEventListener('achievement-unlocked', (event) => {
+      // Проверка на время с момента последнего уведомления
+      const now = Date.now();
+      const timeSinceLastNotification = now - this.lastAchievementNotificationTime;
+      const cooldownPeriod = 5000; // 5 секунд задержки
 
+      if (!this.suppressAchievementNotifications && timeSinceLastNotification > cooldownPeriod) {
+        const achievementData = event.detail;
+        this.notificationMessage = `${achievementData.title} - ${achievementData.description}`;
+        this.showNotification = true;
+        this.notificationProgress = 100;
+
+        if (this.notificationTimer) {
+          clearInterval(this.notificationTimer);
+        }
+
+        this.notificationTimer = setInterval(() => {
+          this.notificationProgress -= 1;
+          if (this.notificationProgress <= 0) {
+            clearInterval(this.notificationTimer);
+            this.showNotification = false;
+          }
+        }, 50);
+
+        setTimeout(() => {
+          clearInterval(this.notificationTimer);
+          this.showNotification = false;
+        }, 5000);
+
+        // Обновить временную метку последнего уведомления
+        this.lastAchievementNotificationTime = now;
+      } else {
+        console.log('Achievement notification skipped due to cooldown');
+      }
+    });
+  },
   async mounted() {
     try {
       // First load from localStorage

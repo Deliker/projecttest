@@ -923,51 +923,74 @@ export default {
   padding: 2rem;
   color: var(--color-text);
   position: relative;
+  overflow-x: hidden; /* Prevent horizontal overflow */
+  display: flex;      /* Use flexbox for better layout control */
+  flex-direction: column;
+  align-items: center;
 }
 
 .profile-container {
   max-width: 1200px;
+  width: 100%;        /* Ensure it takes full width up to max-width */
   margin: 0 auto;
   position: relative;
   animation: fadeIn 0.5s ease;
+  z-index: 1;         /* Ensure content stays above background shapes */
 }
 
-/* Background decorative shapes */
+/* Fix 2: Constrain background shapes and make them fixed */
 .background-shape {
-  position: absolute;
+  position: fixed;     /* Change from absolute to fixed */
   border-radius: 50%;
   opacity: 0.05;
   filter: blur(60px);
-  z-index: -1;
+  z-index: 0;          /* Ensure they stay below content */
+  pointer-events: none; /* Make sure they don't interfere with interactions */
 }
 
 .shape-1 {
-  top: -10%;
-  right: -5%;
-  width: 500px;
-  height: 500px;
+  top: 5%;
+  right: 0;
+  width: 400px;
+  height: 400px;
   background: linear-gradient(45deg, var(--color-primary), var(--color-secondary));
-  animation: float 15s ease-in-out infinite alternate;
+  animation: gentle-float 20s ease-in-out infinite alternate;
 }
 
 .shape-2 {
-  bottom: -5%;
-  left: -5%;
-  width: 400px;
-  height: 400px;
+  bottom: 5%;
+  left: 0;
+  width: 300px;
+  height: 300px;
   background: linear-gradient(45deg, var(--color-secondary), var(--color-accent));
-  animation: float 18s ease-in-out infinite alternate-reverse;
+  animation: gentle-float 25s ease-in-out infinite alternate-reverse;
 }
 
-@keyframes float {
+/* Fix 3: Gentler animation with less movement to prevent shifting */
+@keyframes gentle-float {
   0% {
     transform: translate(0, 0) rotate(0deg);
   }
   100% {
-    transform: translate(50px, 50px) rotate(15deg);
+    transform: translate(20px, 20px) rotate(5deg); /* Reduced movement */
   }
 }
 
+/* Fix 4: Improved responsive layout for smaller screens */
+@media (max-width: 768px) {
+  .profile-page {
+    padding: 1rem;
+  }
+
+  .background-shape {
+    opacity: 0.03; /* Further reduce opacity on mobile */
+  }
+
+  .shape-1, .shape-2 {
+    width: 250px;
+    height: 250px;
+  }
+}
 /* Profile header */
 .profile-header {
   display: flex;

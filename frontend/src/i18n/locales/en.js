@@ -10,7 +10,8 @@ export default {
         login: 'Login',
         signup: 'Sign Up',
         logout: 'Logout',
-        profile: 'Profile'
+        profile: 'Profile',
+        categories: 'Categories'
     },
 
     // Home Page
@@ -119,7 +120,9 @@ export default {
         },
         timer: {
             expired: 'Timer Expired',
-            timeOver: 'Time is up for this task!'
+            timeOver: 'Time is up for this task!',
+            approaching: 'Approaching end!',
+            minutesRemaining: 'minutes remaining'
         }
     },
 
@@ -154,7 +157,14 @@ export default {
             subtitle: 'Try adjusting your search or filter criteria',
             reset: 'Reset Filters'
         },
-        unlocked: 'Achievement Unlocked!'
+        unlocked: 'Achievement Unlocked!',
+        loading: 'Loading achievements...',
+        error: {
+            title: 'Error loading achievements',
+            message: 'Could not load achievements. Please try again.',
+            retry: 'Retry'
+        },
+        confirmReset: 'Are you sure you want to reset all achievements? This cannot be undone.'
     },
 
     // Auth Page
@@ -211,9 +221,15 @@ export default {
         edit: 'Edit Profile',
         saveChanges: 'Save Changes',
         personalInfo: 'Personal Information',
+        personal: 'Personal',
         nameLabel: 'Your Name',
         jobTitleLabel: 'Job Title',
         locationLabel: 'Location',
+        locationPlaceholder: 'Enter your location',
+        noLocation: 'No location specified',
+        emailLabel: 'Email',
+        memberSince: 'Member Since',
+        online: 'Online',
         bioTitle: 'Bio',
         noBio: 'No bio added yet. Tell us about yourself!',
         bioPlaceholder: 'Write something about yourself...',
@@ -223,18 +239,30 @@ export default {
         achievements: 'Achievements',
         achievementPoints: 'Achievement Points',
         completionRate: 'Completion Rate',
+        viewAllStats: 'View All Statistics',
         preferences: 'Preferences',
         theme: 'Theme',
         darkTheme: 'Dark',
         lightTheme: 'Light',
+        language: 'Language',
+        notifications: 'Notifications',
+        emailNotifications: 'Email Notifications',
+        taskReminders: 'Task Reminders',
         security: 'Security',
+        secure: 'Secure',
         changePassword: 'Change Password',
+        passwordTitle: 'Password',
+        passwordSubtitle: 'Change your password regularly for better security',
+        twoFactorTitle: 'Two-Factor Authentication',
+        twoFactorSubtitle: 'Add an extra layer of security to your account',
         currentPassword: 'Current Password',
         newPassword: 'New Password',
         confirmPassword: 'Confirm New Password',
         currentPasswordPlaceholder: 'Enter your current password',
         newPasswordPlaceholder: 'Enter a new password',
         confirmPasswordPlaceholder: 'Confirm your new password',
+        passwordStrength: 'Password Strength',
+        passwordMismatch: 'Passwords do not match',
         cancel: 'Cancel',
         updatePassword: 'Update Password',
         errors: {
@@ -248,7 +276,101 @@ export default {
         passwordChangeSuccess: 'Password changed successfully!'
     },
 
-    //About Page
+    // Admin Panel
+    admin: {
+        title: 'Admin Panel',
+        subtitle: 'Manage users, view statistics, and configure system settings',
+        tabs: {
+            users: 'Users',
+            dashboard: 'Dashboard',
+            settings: 'Settings'
+        },
+        users: {
+            title: 'User Management',
+            search: 'Search users...',
+            name: 'Name',
+            email: 'Email',
+            role: 'Role',
+            lastActive: 'Last Active',
+            actions: 'Actions',
+            confirmDelete: 'Confirm Delete User',
+            deleteWarning: 'This action cannot be undone. This will permanently delete the user account and all associated data.'
+        },
+        roles: {
+            user: 'User',
+            admin: 'Administrator'
+        },
+        actions: {
+            view: 'View',
+            edit: 'Edit',
+            delete: 'Delete',
+            confirm: 'Confirm',
+            cancel: 'Cancel'
+        },
+        dashboard: {
+            title: 'Dashboard',
+            totalUsers: 'Total Users',
+            totalTasks: 'Total Tasks',
+            completedTasks: 'Completed Tasks',
+            totalAchievements: 'Total Achievements'
+        },
+        settings: {
+            title: 'System Settings',
+            appName: 'Application Name',
+            defaultLanguage: 'Default Language',
+            enableRegistration: 'Enable Registration',
+            saveSettings: 'Save Settings'
+        },
+        errors: {
+            loadUsers: 'Failed to load users. Please try again.'
+        }
+    },
+
+    // Categories Management
+    categories: {
+        manage: 'Manage Categories',
+        add: 'Add Category',
+        loading: 'Loading categories...',
+        default: 'Default Categories',
+        custom: 'Custom Categories',
+        system: 'System',
+        noCustom: 'No custom categories yet. Create your first one!',
+        createFirst: 'Create First Category',
+        edit: 'Edit Category',
+        create: 'Create Category',
+        nameLabel: 'Category Name',
+        namePlaceholder: 'Enter category name',
+        colorLabel: 'Category Color',
+        cancel: 'Cancel',
+        update: 'Update Category',
+        deleteTitle: 'Delete Category',
+        deleteMessage: 'Are you sure you want to delete "{name}"?',
+        deleteWarning: 'Tasks in this category will be moved to "Other" category.',
+        confirmDelete: 'Delete',
+        errors: {
+            nameRequired: 'Category name is required',
+            colorRequired: 'Please select a color',
+            nameExists: 'A category with this name already exists'
+        },
+        saveError: 'Failed to save category',
+        loadError: 'Failed to load categories',
+        deleteError: 'Failed to delete category'
+    },
+
+    // Task Attachments
+    attachments: {
+        title: 'Attachments',
+        chooseFile: 'Choose File',
+        clear: 'Clear',
+        upload: 'Upload',
+        download: 'Download',
+        delete: 'Delete',
+        confirmDelete: 'Are you sure you want to delete this attachment?',
+        noAttachments: 'No attachments yet',
+        loading: 'Loading attachments...'
+    },
+
+    // About Page
     about: {
         titleStart: 'About us',
         titleAccent: 'TaskMaster',
