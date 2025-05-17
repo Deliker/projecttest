@@ -3429,6 +3429,384 @@ export default {
   background-color: currentColor;
 }
 
+/* Test Panel Styles */
+.timer-test-panel {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 400px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 16px 0 0 0;
+  border-left: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border);
+  z-index: 900;
+  color: var(--color-text);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.test-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(var(--color-primary-rgb), 0.2);
+}
+
+.test-panel-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+
+.collapse-btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.collapse-btn:hover {
+  background: var(--color-card-bg-hover);
+  color: var(--color-primary);
+}
+
+.test-panel-content {
+  padding: 1rem;
+}
+
+.test-input-group {
+  margin-bottom: 1rem;
+}
+
+.test-input-group label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.test-input {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.test-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.test-btn {
+  flex: 1;
+  padding: 0.6rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 100px;
+}
+
+.test-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.test-btn.warning {
+  background: #FF9800;
+}
+
+.test-btn.danger {
+  background: #F44336;
+}
+
+.active-timers-section {
+  margin-top: 1rem;
+}
+
+.active-timers-section h4 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.no-timers {
+  color: var(--color-text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.9rem;
+}
+
+.active-timers-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.active-timer-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--color-card-bg);
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  border-left: 3px solid var(--color-primary);
+}
+
+.timer-task-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.timer-id {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+.timer-desc {
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.timer-remaining {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: var(--color-primary);
+  margin: 0 0.5rem;
+}
+
+.stop-timer-btn {
+  background: #F44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stop-timer-btn:hover {
+  background: #D32F2F;
+}
+
+.task-attachments-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  transition: all 0.3s ease;
+}
+
+.attachment-section {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+}
+
+.achievement-notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: var(--color-card-bg);
+  border-radius: 16px;
+  overflow: hidden;
+  width: 350px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  border: 1px solid var(--color-primary);
+  animation: notification-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.achievement-notification-content {
+  display: flex;
+  padding: 1.25rem;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+}
+
+.achievement-icon {
+  font-size: 2.5rem;
+}
+
+.achievement-text {
+  flex: 1;
+}
+
+.achievement-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 0.25rem;
+}
+
+.achievement-description {
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.notification-close {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.notification-close:hover {
+  color: var(--color-text);
+  background: var(--color-card-bg-hover);
+}
+
+.achievement-progress {
+  height: 4px;
+  width: 100%;
+  background: var(--color-card-bg-hover);
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.05s linear;
+}
+
+/* IMPROVED MODAL STYLES */
+/* Modal Base */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.modal-content {
+  background: var(--color-card-bg);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  position: relative;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  animation: modal-appear 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+/* Modal Transitions */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+.modal-slide-right-enter-active,
+.modal-slide-right-leave-active,
+.modal-slide-enter-active,
+.modal-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.modal-slide-right-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.modal-slide-right-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.modal-slide-enter-from {
+  transform: translateY(50px);
+  opacity: 0;
+}
+
+.modal-slide-leave-to {
+  transform: translateY(50px);
+  opacity: 0;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Scrollbar styling for modals */
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: var(--color-card-bg);
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 10px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
 @media (max-width: 1280px) {
   .calendar-container {
     padding: 1.5rem;
@@ -3488,197 +3866,13 @@ export default {
   }
   /* Test Panel Styles */
   .timer-test-panel {
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    width: 400px;
-    background: rgba(0, 0, 0, 0.8);
-    border-radius: 16px 0 0 0;
-    border-left: 1px solid var(--color-border);
-    border-top: 1px solid var(--color-border);
-    z-index: 900;
-    color: var(--color-text);
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-
-  .test-panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    border-bottom: 1px solid var(--color-border);
-    background: rgba(var(--color-primary-rgb), 0.2);
-  }
-
-  .test-panel-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    color: var(--color-primary);
-  }
-
-  .collapse-btn {
-    background: transparent;
-    border: 1px solid var(--color-border);
-    color: var(--color-text);
-    padding: 0.3rem 0.8rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: all 0.2s ease;
-  }
-
-  .collapse-btn:hover {
-    background: var(--color-card-bg-hover);
-    color: var(--color-primary);
-  }
-
-  .test-panel-content {
-    padding: 1rem;
-  }
-
-  .test-input-group {
-    margin-bottom: 1rem;
-  }
-
-  .test-input-group label {
-    display: block;
-    margin-bottom: 0.3rem;
-    font-size: 0.9rem;
-    color: var(--color-text-secondary);
-  }
-
-  .test-input {
     width: 100%;
-    padding: 0.5rem;
-    background: var(--color-card-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    color: var(--color-text);
-    font-size: 0.9rem;
+    border-radius: 16px 16px 0 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
   }
 
-  .test-buttons {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-  }
-
-  .test-btn {
-    flex: 1;
-    padding: 0.6rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-width: 100px;
-  }
-
-  .test-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  }
-
-  .test-btn.warning {
-    background: #FF9800;
-  }
-
-  .test-btn.danger {
-    background: #F44336;
-  }
-
-  .active-timers-section {
-    margin-top: 1rem;
-  }
-
-  .active-timers-section h4 {
-    font-size: 1rem;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .no-timers {
-    color: var(--color-text-secondary);
-    font-style: italic;
-    text-align: center;
-    padding: 1rem;
-    font-size: 0.9rem;
-  }
-
-  .active-timers-list {
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .active-timer-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
-    background: var(--color-card-bg);
-    border-radius: 4px;
-    margin-bottom: 0.5rem;
-    border-left: 3px solid var(--color-primary);
-  }
-
-  .timer-task-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    flex: 1;
-  }
-
-  .timer-id {
-    font-size: 0.7rem;
-    color: var(--color-text-secondary);
-  }
-
-  .timer-desc {
-    font-size: 0.9rem;
-    color: var(--color-text);
-  }
-
-  .timer-remaining {
-    font-size: 0.9rem;
-    font-weight: bold;
-    color: var(--color-primary);
-    margin: 0 0.5rem;
-  }
-
-  .stop-timer-btn {
-    background: #F44336;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.3rem 0.6rem;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .stop-timer-btn:hover {
-    background: #D32F2F;
-  }
-
-  @media (max-width: 768px) {
-    .timer-test-panel {
-      width: 100%;
-      border-radius: 16px 16px 0 0;
-      bottom: 0;
-      left: 0;
-      right: 0;
-    }
-  }
   .calendar-filters {
     width: 100%;
     justify-content: space-between;
@@ -3708,6 +3902,13 @@ export default {
     min-width: 45%;
     margin-bottom: 0.5rem;
   }
+
+  /* Improved responsive modal styles */
+  .date-picker {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
 }
 
 @media (max-width: 640px) {
@@ -3730,17 +3931,32 @@ export default {
   }
 
   .date-picker {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .priority-selector {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
   }
 
   .task-meta {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.35rem;
+  }
+
+  /* Modal improvements for small screens */
+  .modal {
+    padding: 0.5rem;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    max-height: 95vh;
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem;
+    margin-bottom: 0;
   }
 }
 
@@ -3781,22 +3997,33 @@ export default {
   .task-duration, .timer-countdown {
     max-width: 120px;
   }
-  .task-attachments-count {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: 0.75rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    background: rgba(var(--color-primary-rgb), 0.1);
-    color: var(--color-primary);
-    transition: all 0.3s ease;
+
+  /* Even more compact for very small screens */
+  .duration-selector {
+    grid-template-columns: 1fr;
   }
 
-  .attachment-section {
-    margin-top: 1.5rem;
-    border-top: 1px solid var(--color-border);
-    padding-top: 1rem;
+  .category-selector {
+    grid-template-columns: 1fr;
+  }
+
+  /* More compact modal content */
+  .modal-content {
+    padding: 1.25rem;
+  }
+
+  .close-btn {
+    top: 1rem;
+    right: 1rem;
+  }
+
+  .modal-title {
+    font-size: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
   }
 }
 </style>
