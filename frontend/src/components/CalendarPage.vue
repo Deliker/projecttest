@@ -287,6 +287,7 @@
           <div class="form-group">
             <label>{{ $t('calendar.modal.category') }}</label>
             <div class="category-selector">
+              <!-- Default Categories -->
               <div v-for="category in taskCategories"
                    :key="category.id"
                    :class="['category-option', { active: selectedCategory === category.id }]"
@@ -294,6 +295,16 @@
                    @click="selectedCategory = category.id">
                 <div class="category-color" :style="{ backgroundColor: category.color }"></div>
                 <span>{{ $t(`calendar.categoryNames.${category.id}`) }}</span>
+              </div>
+
+              <!-- Custom Categories -->
+              <div v-for="category in customCategories"
+                   :key="`custom_${category.id}`"
+                   :class="['category-option', { active: selectedCategory === `custom_${category.id}` }]"
+                   :style="{ color: category.color }"
+                   @click="selectedCategory = `custom_${category.id}`">
+                <div class="category-color" :style="{ backgroundColor: category.color }"></div>
+                <span>{{ category.name }}</span>
               </div>
             </div>
           </div>
@@ -650,6 +661,7 @@ export default {
         { id: 'shopping', name: 'Shopping', color: '#FF9800' },
         { id: 'other', name: 'Other', color: '#757575' }
       ],
+      customCategories: [],
       editTaskData: {
         id: null,
         description: '',
@@ -722,6 +734,24 @@ export default {
     },
     selectedMonthName() {
       return this.months[this.selectedMonth];
+    },
+    allCategories() {
+      // Start with default categories
+      const categories = [...this.taskCategories];
+
+      // Add custom categories with proper formatting
+      if (this.customCategories && this.customCategories.length > 0) {
+        this.customCategories.forEach(customCat => {
+          categories.push({
+            id: `custom_${customCat.id}`,
+            name: customCat.name,
+            color: customCat.color,
+            isCustom: true
+          });
+        });
+      }
+
+      return categories;
     },
     calendarDays() {
       const days = [];
@@ -851,7 +881,21 @@ export default {
         this.isLoading = false;
       }
     },
+    async loadAllCategories() {
+      try {
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+          console.log('No user ID found, using only default categories');
+          return;
+        }
 
+        const response = await apiService.getAllCategories(userId);
+        this.customCategories = response.data || [];
+        console.log('Loaded custom categories:', this.customCategories);
+      } catch (error) {
+        console.error('Failed to load custom categories:', error);
+      }
+    },
     // Initialize timer for a task
     initializeTimer(task) {
       if (!task.timeRemaining || task.timeRemaining <= 0) return;
@@ -1191,6 +1235,15 @@ export default {
         this.closeTimerNotification();
       }, 5000);
     },
+    getCategoryDisplayName(categoryId) {
+      if (categoryId.startsWith('custom_')) {
+        const customCatId = parseInt(categoryId.replace('custom_', ''));
+        const customCat = this.customCategories.find(c => c.id === customCatId);
+        return customCat ? customCat.name : 'Other';
+      } else {
+        return this.$t(`calendar.categoryNames.${categoryId}`);
+      }
+    },
     openAddTaskForSelectedDay() {
       this.closeTaskListModal();
       this.openTaskModal();
@@ -1411,11 +1464,36 @@ export default {
             return;
           }
 
+          // Get category information
+          let categoryId = this.selectedCategory;
+          let categoryColor = '';
+
+          // Handle custom category
+          if (categoryId.startsWith('custom_')) {
+            const customCatId = parseInt(categoryId.replace('custom_', ''));
+            const customCat = this.customCategories.find(c => c.id === customCatId);
+
+            if (customCat) {
+              // For display purposes we keep the "custom_" prefix
+              // but for backend storage we just use the actual id
+              categoryColor = customCat.color;
+            } else {
+              // Fallback to "other" if custom category not found
+              categoryId = 'other';
+              const otherCategory = this.taskCategories.find(c => c.id === 'other');
+              categoryColor = otherCategory ? otherCategory.color : '#757575';
+            }
+          } else {
+            // Get default category color
+            const category = this.taskCategories.find(c => c.id === categoryId);
+            categoryColor = category ? category.color : '#757575';
+          }
+
           // Prepare task data for the API
           const taskData = {
             description: this.newTask.trim(),
             priority: this.taskPriority,
-            category: this.selectedCategory,
+            category: categoryId,
             year: this.selectedYear,
             month: this.selectedMonth,
             day: this.selectedDay,
@@ -1488,8 +1566,7 @@ export default {
           }
 
           // Add category color
-          const category = this.taskCategories.find(c => c.id === this.selectedCategory);
-          createdTask.categoryColor = category.color;
+          createdTask.categoryColor = categoryColor;
 
           this.tasks[key].push(createdTask);
 
@@ -1869,6 +1946,27 @@ export default {
       );
 
       try {
+        // Determine category color
+        let categoryColor = '';
+        const categoryId = this.editTaskData.category;
+
+        // Handle custom category
+        if (categoryId.startsWith('custom_')) {
+          const customCatId = parseInt(categoryId.replace('custom_', ''));
+          const customCat = this.customCategories.find(c => c.id === customCatId);
+
+          if (customCat) {
+            categoryColor = customCat.color;
+          } else {
+            // Fallback to "other" if custom category not found
+            categoryColor = '#757575';
+          }
+        } else {
+          // Get default category color
+          const category = this.taskCategories.find(c => c.id === categoryId);
+          categoryColor = category ? category.color : '#757575';
+        }
+
         if (oldKey !== newKey) {
           if (!this.tasks[newKey]) {
             this.tasks[newKey] = [];
@@ -1890,6 +1988,7 @@ export default {
           taskToMove.month = this.editTaskData.month;
           taskToMove.day = this.editTaskData.day;
           taskToMove.duration = durationMinutes;
+          taskToMove.categoryColor = categoryColor;
 
           if (taskToMove.timeRemaining !== null) {
             taskToMove.timeRemaining = durationMinutes * 60;
@@ -1912,9 +2011,6 @@ export default {
 
           // Update local state
           this.tasks[oldKey].splice(this.editTaskData.index, 1);
-          const category = this.taskCategories.find(c => c.id === this.editTaskData.category);
-          taskToMove.categoryColor = category.color;
-
           this.tasks[newKey].push(taskToMove);
           this.tasks[newKey].sort((a, b) => {
             const priorityOrder = {high: 1, medium: 2, low: 3};
@@ -1939,14 +2035,11 @@ export default {
           task.priority = this.editTaskData.priority;
           task.category = this.editTaskData.category;
           task.duration = durationMinutes;
+          task.categoryColor = categoryColor;
 
           if (task.timeRemaining !== null) {
             task.timeRemaining = durationMinutes * 60;
           }
-
-          // Update category color
-          const category = this.taskCategories.find(c => c.id === this.editTaskData.category);
-          task.categoryColor = category.color;
 
           // Check if this is a local-only task
           const isLocalTask = task.id.toString().startsWith('local_') || task.isLocalOnly;
@@ -2177,13 +2270,13 @@ export default {
 
   async mounted() {
     try {
-      // Check for and migrate old tasks data
-      this.migrateTasksFromOldStorage();
-
       // First load from localStorage
       this.loadTasksFromLocalStorage();
 
-      // Then load from server
+      // Load custom categories
+      await this.loadAllCategories();
+
+      // Then load tasks from server
       await this.loadTasksForMonth();
       this.updateDayAttributes();
     } catch (error) {

@@ -19,6 +19,7 @@ import AchievementsPage from './components/AchievementsPage.vue';
 import AuthPage from './components/AuthPage.vue';
 import UserProfilePage from './components/UserProfilePage.vue';
 import AdminPanel from "./components/AdminPanel.vue";
+import CategoryManagement from './components/CategoryManagement.vue';
 
 // Initialize auth service
 auth.init();
@@ -65,6 +66,12 @@ const routes = [
         component: UserProfilePage,
         beforeEnter: requireAuth,
         meta: { title: 'Profile - TaskMaster' }
+    },
+    {
+        path: '/categories',
+        component: CategoryManagement,
+        beforeEnter: requireAuth,
+        meta: { title: 'Manage Categories - TaskMaster' }
     },
     {
         path: '/calendar',
@@ -119,6 +126,8 @@ router.afterEach((to) => {
         document.title = `${i18n.global.t('nav.calendar')} - ${appName}`;
     } else if (to.path === '/achievements') {
         document.title = `${i18n.global.t('nav.achievements')} - ${appName}`;
+    } else if (to.path === '/categories') {
+        document.title = `${i18n.global.t('nav.categories')} - ${appName}`;  // Add this line
     } else if (to.path === '/auth') {
         const mode = to.query.mode === 'register' ? i18n.global.t('nav.signup') : i18n.global.t('nav.login');
         document.title = `${mode} - ${appName}`;

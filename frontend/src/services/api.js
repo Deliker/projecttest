@@ -124,7 +124,25 @@ export default {
   getTasksByCategory(userId, category) {
     return apiClient.get(`/tasks/category/${category}?userId=${userId}`);
   },
-  
+  getAllCategories(userId) {
+    return apiClient.get(`/categories?userId=${userId}`);
+  },
+
+  getCategoryById(categoryId, userId) {
+    return apiClient.get(`/categories/${categoryId}?userId=${userId}`);
+  },
+
+  createCategory(categoryData, userId) {
+    return apiClient.post(`/categories?userId=${userId}`, categoryData);
+  },
+
+  updateCategory(categoryId, categoryData, userId) {
+    return apiClient.put(`/categories/${categoryId}?userId=${userId}`, categoryData);
+  },
+
+  deleteCategory(categoryId, userId) {
+    return apiClient.delete(`/categories/${categoryId}?userId=${userId}`);
+  },
   getTasksByPriority(userId, priority) {
     return apiClient.get(`/tasks/priority/${priority}?userId=${userId}`);
   },
