@@ -5,15 +5,19 @@ import com.example.demo.model.User;
 import com.example.demo.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @Service
 public class TaskService {
+
+    private static final Logger logger = Logger.getLogger(TaskService.class.getName());
 
     private final TaskRepository taskRepository;
     private final AchievementService achievementService;
@@ -39,14 +43,17 @@ public class TaskService {
     public Task createTask(Task task, User user) {
         task.setUser(user);
         Task savedTask = taskRepository.save(task);
-        
-        // Check for "early_planner" achievement
-        LocalDateTime taskDate = LocalDateTime.of(task.getYear(), task.getMonth() + 1, task.getDay(), 0, 0);
-        LocalDateTime now = LocalDateTime.now();
-        if (taskDate.isAfter(now.plusDays(7))) {
-            achievementService.checkAchievement(user, "early_planner");
+
+        // Check for planning achievements (early_planner)
+        try {
+            if (achievementService != null) {
+                logger.info("Checking for planning achievements after creating task: " + savedTask.getId());
+                achievementService.checkPlanningAchievements(user);
+            }
+        } catch (Exception e) {
+            logger.severe("Error checking planning achievements: " + e.getMessage());
         }
-        
+
         return savedTask;
     }
 
@@ -62,19 +69,34 @@ public class TaskService {
         taskRepository.deleteById(id);
     }
 
+    @Transactional
     public Task completeTask(Long id, User user) {
         Optional<Task> taskOpt = taskRepository.findById(id);
         if (taskOpt.isPresent()) {
             Task task = taskOpt.get();
-            task.setCompleted(true);
-            task.setCompletedAt(LocalDateTime.now());
-            
-            Task savedTask = taskRepository.save(task);
-            
-            // Trigger achievement check after completing a task
-            checkAchievementsAfterTaskCompletion(user, task);
-            
-            return savedTask;
+
+            // Only proceed if task is not already completed
+            if (!Boolean.TRUE.equals(task.getCompleted())) {
+                logger.info("Completing task " + id + " for user " + user.getId());
+
+                task.setCompleted(true);
+                task.setCompletedAt(LocalDateTime.now());
+
+                Task savedTask = taskRepository.save(task);
+
+                // Check achievements after completing the task
+                try {
+                    if (achievementService != null) {
+                        logger.info("Checking achievements after completing task: " + savedTask.getId());
+                        achievementService.checkAndGrantAchievements(user, savedTask);
+                    }
+                } catch (Exception e) {
+                    logger.severe("Error checking achievements: " + e.getMessage());
+                }
+
+                return savedTask;
+            }
+            return task;
         }
         return null;
     }
@@ -102,87 +124,23 @@ public class TaskService {
     public Map<String, Long> getTaskCountsByCategory(User user) {
         List<Object[]> results = taskRepository.countTasksByCategory(user);
         Map<String, Long> categoryCounts = new HashMap<>();
-        
+
         for (Object[] result : results) {
             String category = (String) result[0];
             Long count = ((Number) result[1]).longValue();
             categoryCounts.put(category, count);
         }
-        
+
         return categoryCounts;
     }
 
     public List<Task> getTasksForWeek(User user, LocalDateTime startDate) {
         LocalDateTime endDate = startDate.plusDays(6);
-        
-        return taskRepository.findTasksForWeek(
-            user,
-            startDate.getYear(), startDate.getMonthValue() - 1, startDate.getDayOfMonth(),
-            endDate.getYear(), endDate.getMonthValue() - 1, endDate.getDayOfMonth()
-        );
-    }
 
-    private void checkAchievementsAfterTaskCompletion(User user, Task task) {
-        // Get total completed tasks count
-        long completedTasksCount = taskRepository.countByUserAndCompletedTrue(user);
-        
-        // Check for first task achievement
-        if (completedTasksCount == 1) {
-            achievementService.checkAchievement(user, "beginner");
-        }
-        
-        // Check for time master achievement (50 tasks)
-        if (completedTasksCount >= 50) {
-            achievementService.checkAchievement(user, "time_master");
-        }
-        
-        // Check tasks completed today
-        LocalDateTime today = LocalDateTime.now();
-        LocalDateTime startOfDay = today.toLocalDate().atStartOfDay();
-        LocalDateTime endOfDay = today.toLocalDate().atTime(23, 59, 59);
-        
-        List<Task> tasksCompletedToday = taskRepository.findByUserAndCompletedTrueAndCompletedAtBetween(
-            user, startOfDay, endOfDay
+        return taskRepository.findTasksForWeek(
+                user,
+                startDate.getYear(), startDate.getMonthValue() - 1, startDate.getDayOfMonth(),
+                endDate.getYear(), endDate.getMonthValue() - 1, endDate.getDayOfMonth()
         );
-        
-        // Check for productive day achievement (5 tasks in one day)
-        if (tasksCompletedToday.size() >= 5) {
-            achievementService.checkAchievement(user, "productive_day");
-        }
-        
-        // Check for super productive day achievement (10 tasks in one day)
-        if (tasksCompletedToday.size() >= 10) {
-            achievementService.checkAchievement(user, "super_productive_day");
-        }
-        
-        // Check for early bird achievement (task completed before 6 AM)
-        LocalDateTime completionTime = task.getCompletedAt();
-        if (completionTime.getHour() < 6) {
-            achievementService.checkAchievement(user, "early_bird");
-        }
-        
-        // Check for night owl achievement (task completed after midnight)
-        if (completionTime.getHour() >= 0 && completionTime.getHour() < 4) {
-            achievementService.checkAchievement(user, "night_owl");
-        }
-        
-        // Check for priority expert achievement (10 high priority tasks)
-        if ("high".equals(task.getPriority())) {
-            long highPriorityTasksCompleted = taskRepository.findByUserAndCompletedTrue(user).stream()
-                .filter(t -> "high".equals(t.getPriority()))
-                .count();
-                
-            if (highPriorityTasksCompleted >= 10) {
-                achievementService.checkAchievement(user, "priority_expert");
-            }
-        }
-        
-        // Check for multitasker achievement (tasks in 5 different categories)
-        Map<String, Long> categoryCounts = getTaskCountsByCategory(user);
-        if (categoryCounts.size() >= 5) {
-            achievementService.checkAchievement(user, "multitasker");
-        }
-        
-        // Weekly achievements will be checked elsewhere as they require more context
     }
 }

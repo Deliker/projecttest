@@ -1,16 +1,15 @@
-// Improved achievements.js service to prevent duplicate events and fix display issues
-
+// Simplified achievement service that relies on the backend for achievements logic
 import apiService from './api';
 
 // Achievement categories with metadata
 export const achievementCategories = [
-    { id: 'daily', name: 'Ежедневные достижения', description: 'Достижения для ежедневной продуктивности', icon: '📆' },
-    { id: 'weekly', name: 'Еженедельные вехи', description: 'Достижения для еженедельной стабильности', icon: '📅' },
-    { id: 'monthly', name: 'Ежемесячное мастерство', description: 'Долгосрочные достижения', icon: '📈' },
-    { id: 'special', name: 'Особые достижения', description: 'Уникальные вехи продуктивности', icon: '🏆' }
+    { id: 'daily', name: 'Daily Achievements', description: 'Achievements for daily productivity', icon: '📆' },
+    { id: 'weekly', name: 'Weekly Milestones', description: 'Achievements for weekly consistency', icon: '📅' },
+    { id: 'monthly', name: 'Monthly Mastery', description: 'Long-term achievements', icon: '📈' },
+    { id: 'special', name: 'Special Achievements', description: 'Unique productivity milestones', icon: '🏆' }
 ];
 
-// Achievement definitions
+// Achievement definitions (used for display and notification purposes only)
 export const achievementsList = [
     // Daily achievements
     {
@@ -152,40 +151,122 @@ export const achievementsList = [
 ];
 
 /**
- * AchievementsService - Improved to fix display issues and prevent duplicate notifications
+ * Simplified AchievementsService - Let the backend do the hard work
  */
 class AchievementsService {
     constructor() {
-        // Cached achievements for the current user
-        this._achievementCache = null;
-        this._statCache = null;
-        this._lastUserId = null;
-        this._recentlyUnlockedAchievements = new Set();
+        // Cache structure for achievements and stats
+        this._cache = {
+            achievements: null,
+            stats: null,
+            userId: null,
+            lastFetched: 0
+        };
 
-        // Create a custom event dispatcher
-        this._eventDispatcher = new EventTarget();
+        // Set up event listeners for achievement notifications
+        this._setupAchievementNotifications();
+    }
+
+    /**
+     * Clear the cache to force new data fetching
+     */
+    clearCache() {
+        this._cache = {
+            achievements: null,
+            stats: null,
+            userId: null,
+            lastFetched: 0
+        };
     }
 
     /**
      * Get the current user ID from localStorage
-     * @returns {string|null} User ID or null if not logged in
      */
     _getCurrentUserId() {
         return localStorage.getItem('user_id');
     }
 
     /**
-     * Clear the achievement cache
+     * Set up listeners for task completion and creation events
+     * to poll for new achievements
      */
-    clearCache() {
-        this._achievementCache = null;
-        this._statCache = null;
-        this._lastUserId = null;
+    _setupAchievementNotifications() {
+        // Listen for task completion events
+        document.addEventListener('task-completed', () => {
+            this._checkForNewAchievements();
+        });
+
+        // Listen for task creation events
+        document.addEventListener('task-created', () => {
+            this._checkForNewAchievements();
+        });
+    }
+
+    /**
+     * Poll the server for new achievements
+     */
+    async _checkForNewAchievements() {
+        const userId = this._getCurrentUserId();
+        if (!userId) return;
+
+        try {
+            // Get the current achievements
+            const currentAchievements = this._cache.achievements || [];
+            const currentCount = currentAchievements.length;
+
+            // Fetch the latest achievements (force refresh)
+            this.clearCache();
+            const newAchievements = await this.getAllAchievements();
+
+            // If we have more achievements than before, find the new ones
+            if (newAchievements.length > currentCount) {
+                // Sort by unlocked time to get the newest first
+                const sortedAchievements = newAchievements
+                    .filter(a => a.isUnlocked)
+                    .sort((a, b) => {
+                        if (!a.unlockedAt) return 1;
+                        if (!b.unlockedAt) return -1;
+                        return new Date(b.unlockedAt) - new Date(a.unlockedAt);
+                    });
+
+                // Get the most recently unlocked achievement
+                if (sortedAchievements.length > 0) {
+                    const latestAchievement = sortedAchievements[0];
+
+                    // Dispatch notification events
+                    this._notifyAchievementUnlocked(latestAchievement);
+                }
+            }
+        } catch (error) {
+            console.error('Error checking for new achievements:', error);
+        }
+    }
+
+    /**
+     * Show a notification for a newly unlocked achievement
+     */
+    _notifyAchievementUnlocked(achievement) {
+        if (!achievement || !achievement.id) return;
+
+        const achievementInfo = achievementsList.find(a => a.id === achievement.id);
+        if (!achievementInfo) return;
+
+        // Create and dispatch the event
+        const event = new CustomEvent('achievement-unlocked', {
+            detail: {
+                id: achievement.id,
+                title: achievementInfo.title,
+                description: achievementInfo.description,
+                icon: achievementInfo.icon,
+                points: achievementInfo.points
+            }
+        });
+
+        document.dispatchEvent(event);
     }
 
     /**
      * Get all achievements for the current user
-     * @returns {Promise<Array>} List of achievements with unlock status
      */
     async getAllAchievements() {
         const userId = this._getCurrentUserId();
@@ -194,9 +275,11 @@ class AchievementsService {
             return [];
         }
 
-        // Check if we have cached data for this user
-        if (this._achievementCache && this._lastUserId === userId) {
-            return this._achievementCache;
+        // Check if we have valid cached data
+        if (this._cache.achievements &&
+            this._cache.userId === userId &&
+            Date.now() - this._cache.lastFetched < 60000) { // Cache for 1 minute
+            return this._cache.achievements;
         }
 
         try {
@@ -243,9 +326,10 @@ class AchievementsService {
                 };
             });
 
-            // Cache the result
-            this._achievementCache = allAchievements;
-            this._lastUserId = userId;
+            // Update cache
+            this._cache.achievements = allAchievements;
+            this._cache.userId = userId;
+            this._cache.lastFetched = Date.now();
 
             return allAchievements;
         } catch (error) {
@@ -256,7 +340,6 @@ class AchievementsService {
 
     /**
      * Get achievement statistics
-     * @returns {Promise<Object>} Achievement statistics
      */
     async getStats() {
         const userId = this._getCurrentUserId();
@@ -270,9 +353,11 @@ class AchievementsService {
             };
         }
 
-        // Check if we have cached stats
-        if (this._statCache && this._lastUserId === userId) {
-            return this._statCache;
+        // Check if we have valid cached stats
+        if (this._cache.stats &&
+            this._cache.userId === userId &&
+            Date.now() - this._cache.lastFetched < 60000) { // Cache for 1 minute
+            return this._cache.stats;
         }
 
         try {
@@ -280,29 +365,20 @@ class AchievementsService {
             const response = await apiService.getAchievementStats(userId);
             const stats = response.data || {};
 
-            // If stats are empty or incomplete, calculate them
+            // If stats are incomplete, supplement with calculated values
             if (!stats.totalAchievements) {
                 const achievements = await this.getAllAchievements();
                 const unlockedCount = achievements.filter(a => a.isUnlocked).length;
-                const totalPoints = achievements
-                    .filter(a => a.isUnlocked)
-                    .reduce((sum, a) => sum + a.points, 0);
 
-                const calculatedStats = {
-                    totalAchievements: achievementsList.length,
-                    unlockedCount,
-                    progressPercentage: Math.round((unlockedCount / achievementsList.length) * 100),
-                    totalPoints,
-                    streak: stats.streak || 0
-                };
-
-                // Cache the result
-                this._statCache = calculatedStats;
-                return calculatedStats;
+                stats.totalAchievements = achievementsList.length;
+                stats.unlockedCount = unlockedCount;
+                stats.progressPercentage = Math.round((unlockedCount / achievementsList.length) * 100);
             }
 
-            // Cache and return the backend stats
-            this._statCache = stats;
+            // Update cache
+            this._cache.stats = stats;
+            this._cache.userId = userId;
+
             return stats;
         } catch (error) {
             console.error('Error fetching achievement stats:', error);
@@ -320,7 +396,6 @@ class AchievementsService {
 
     /**
      * Get achievements grouped by category
-     * @returns {Promise<Object>} Achievements organized by category
      */
     async getAchievementsByCategory() {
         const achievements = await this.getAllAchievements();
@@ -342,82 +417,7 @@ class AchievementsService {
     }
 
     /**
-     * Unlock an achievement for the current user
-     * @param {string} achievementId - ID of the achievement to unlock
-     * @returns {Promise<boolean>} Success status
-     */
-    async unlockAchievement(achievementId) {
-        const userId = this._getCurrentUserId();
-        if (!userId) {
-            console.warn('No user ID available, cannot unlock achievement');
-            return false;
-        }
-
-        // Prevent duplicate unlocks in a short time period
-        if (this._recentlyUnlockedAchievements.has(achievementId)) {
-            console.log(`Skipping duplicate unlock for achievement: ${achievementId}`);
-            return false;
-        }
-
-        try {
-            // First check if achievement is already unlocked
-            const response = await apiService.checkAchievement(userId, achievementId);
-            const hasAchievement = response.data?.hasAchievement;
-
-            if (hasAchievement) {
-                console.log(`Achievement ${achievementId} already unlocked`);
-                return false;
-            }
-
-            // Add to recently unlocked set to prevent duplicates
-            this._recentlyUnlockedAchievements.add(achievementId);
-
-            // Auto-remove after 10 seconds to prevent memory buildup
-            setTimeout(() => {
-                this._recentlyUnlockedAchievements.delete(achievementId);
-            }, 10000);
-
-            // Unlock the achievement
-            const unlockResponse = await apiService.unlockAchievement(userId, achievementId);
-
-            if (unlockResponse.status === 201) {
-                console.log(`Achievement ${achievementId} unlocked successfully`);
-
-                // Clear the cache
-                this.clearCache();
-
-                // Find the achievement details
-                const achievement = achievementsList.find(a => a.id === achievementId);
-                if (achievement) {
-                    // Dispatch notification event
-                    const event = new CustomEvent('achievement-unlocked', {
-                        detail: {
-                            id: achievementId,
-                            title: achievement.title,
-                            description: achievement.description,
-                            icon: achievement.icon,
-                            points: achievement.points
-                        }
-                    });
-
-                    // Use setTimeout to ensure the event is dispatched after any current processing
-                    setTimeout(() => {
-                        document.dispatchEvent(event);
-                    }, 100);
-                }
-
-                return true;
-            }
-
-            return false;
-        } catch (error) {
-            console.error(`Error unlocking achievement ${achievementId}:`, error);
-            return false;
-        }
-    }
-
-    /**
-     * Unlock a random achievement (for testing)
+     * Unlock a random achievement (for testing/development)
      */
     async unlockRandomAchievement() {
         try {
@@ -434,8 +434,17 @@ class AchievementsService {
             const randomIndex = Math.floor(Math.random() * lockedAchievements.length);
             const randomAchievement = lockedAchievements[randomIndex];
 
-            // Unlock it
-            return await this.unlockAchievement(randomAchievement.id);
+            // Directly unlock through the API
+            const userId = this._getCurrentUserId();
+            if (!userId) return false;
+
+            const response = await apiService.unlockAchievement(userId, randomAchievement.id);
+
+            // Clear the cache and check for new achievements
+            this.clearCache();
+            await this._checkForNewAchievements();
+
+            return response.status === 201;
         } catch (error) {
             console.error('Error unlocking random achievement:', error);
             return false;
@@ -443,10 +452,11 @@ class AchievementsService {
     }
 
     /**
-     * Reset all achievements (for testing)
+     * Reset all achievements (for development only)
+     * This requires a backend implementation
      */
     async resetAllAchievements() {
-        console.log('Achievement reset functionality is not implemented in the backend');
+        console.log('Achievement reset functionality needs to be implemented in the backend');
         // This would require a backend endpoint to reset achievements
         this.clearCache();
         return true;
@@ -456,5 +466,5 @@ class AchievementsService {
 // Create a singleton instance
 const achievementsService = new AchievementsService();
 
-// Export for use in other components
+// Export the service as default export
 export default achievementsService;

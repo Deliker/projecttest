@@ -175,6 +175,17 @@
       <button class="debug-btn reset-all" @click="resetAllAchievements">
         Reset All Achievements
       </button>
+      <div class="debug-achievements-list">
+        <h4>Achievements Status:</h4>
+        <div v-for="category in categories" :key="category.id">
+          <strong>{{ category.id }}:</strong>
+          <span v-for="ach in achievementsByCategory[category.id] || []"
+                :key="ach.id"
+                :class="{'unlocked-debug': ach.isUnlocked}">
+            {{ ach.id }}{{ ach.isUnlocked ? '(✓)' : '(✗)' }}
+          </span>
+        </div>
+      </div>
     </div>
 
     <!-- Add the AchievementNotification component -->
@@ -210,7 +221,8 @@ export default {
       },
       isLoading: true,
       error: null,
-      isDevMode: process.env.NODE_ENV === 'development'
+      isDevMode: process.env.NODE_ENV === 'development',
+      refreshInterval: null
     };
   },
 
@@ -238,15 +250,49 @@ export default {
       this.error = null;
 
       try {
+        console.log("[AchievementsPage] Loading achievements...");
+
+        // Force cache clearance to ensure fresh data
+        achievementsService.clearCache();
+
         // Load achievements by category
         this.achievementsByCategory = await achievementsService.getAchievementsByCategory();
 
         // Load stats
         this.stats = await achievementsService.getStats();
 
+        // Debug logging
+        console.log("----- ACHIEVEMENT DISPLAY DIAGNOSTICS -----");
+        console.log("Current filter:", this.filter);
+
+        // Log information about categories and achievement counts
+        for (const categoryId in this.achievementsByCategory) {
+          const achievements = this.achievementsByCategory[categoryId] || [];
+          const unlocked = achievements.filter(a => a.isUnlocked).length;
+          console.log(`Category ${categoryId}: ${achievements.length} total, ${unlocked} unlocked`);
+
+          // Log full list of unlocked achievements in this category
+          if (unlocked > 0) {
+            console.log("Unlocked achievements in this category:",
+                achievements.filter(a => a.isUnlocked).map(a => a.id));
+          }
+        }
+
+        // Calculate total unlocked achievements across all categories
+        let totalUnlocked = 0;
+        for (const categoryId in this.achievementsByCategory) {
+          const achievements = this.achievementsByCategory[categoryId] || [];
+          totalUnlocked += achievements.filter(a => a.isUnlocked).length;
+        }
+        console.log("Total unlocked achievements across all categories:", totalUnlocked);
+
+        // Check stats consistency
+        console.log("Stats object shows:", this.stats.unlockedCount, "unlocked");
+        console.log("----- END DIAGNOSTICS -----");
+
         this.isLoading = false;
       } catch (error) {
-        console.error('Error loading achievements:', error);
+        console.error('[AchievementsPage] Error loading achievements:', error);
         this.error = this.$t('achievements.error.message');
         this.isLoading = false;
       }
@@ -257,7 +303,9 @@ export default {
         return [];
       }
 
-      return achievements.filter(achievement => {
+      console.log("Filtering", achievements.length, "achievements:");
+
+      const filtered = achievements.filter(achievement => {
         // Filter by search query
         const searchMatch = !this.searchQuery ||
             (achievement.title && achievement.title.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
@@ -270,30 +318,47 @@ export default {
 
         return searchMatch && statusMatch;
       });
+
+      console.log("After filtering:", filtered.length, "achievements");
+
+      // Log how many achievements are unlocked in this category
+      const unlocked = filtered.filter(a => a.isUnlocked).length;
+      if (unlocked > 0) {
+        console.log(unlocked, "unlocked achievements in this category:",
+            filtered.filter(a => a.isUnlocked).map(a => a.id));
+      }
+
+      return filtered;
     },
 
     shouldHideAchievement(achievement) {
-      // Should never happen, but check for null/undefined
+      // Check achievement is valid
       if (!achievement) {
+        console.warn("[AchievementsPage] Attempted to check a null/undefined achievement");
         return true;
       }
 
-      // Hide based on search query
+      // Check achievement fields exist (defensive)
+      const title = achievement.title || '';
+      const description = achievement.description || '';
+      const isUnlocked = !!achievement.isUnlocked;
+
+      // Filter by search query
       if (this.searchQuery) {
-        const matchesTitle = achievement.title?.toLowerCase().includes(this.searchQuery.toLowerCase()) || false;
-        const matchesDescription = achievement.description?.toLowerCase().includes(this.searchQuery.toLowerCase()) || false;
+        const matchesTitle = title.toLowerCase().includes(this.searchQuery.toLowerCase());
+        const matchesDescription = description.toLowerCase().includes(this.searchQuery.toLowerCase());
 
         if (!matchesTitle && !matchesDescription) {
           return true;
         }
       }
 
-      // Hide based on filter
-      if (this.filter === 'unlocked' && !achievement.isUnlocked) {
+      // Filter by unlock status
+      if (this.filter === 'unlocked' && !isUnlocked) {
         return true;
       }
 
-      if (this.filter === 'locked' && achievement.isUnlocked) {
+      if (this.filter === 'locked' && isUnlocked) {
         return true;
       }
 
@@ -312,29 +377,74 @@ export default {
 
     async unlockRandomAchievement() {
       try {
-        await achievementsService.unlockRandomAchievement();
-        // Reload achievements to reflect changes
-        this.loadAchievements();
+        console.log("[AchievementsPage] Unlocking random achievement...");
+        const success = await achievementsService.unlockRandomAchievement();
+
+        if (success) {
+          console.log("[AchievementsPage] Successfully unlocked random achievement");
+          // Reload achievements to refresh the display
+          this.loadAchievements();
+        } else {
+          console.log("[AchievementsPage] Could not unlock random achievement");
+        }
       } catch (error) {
-        console.error('Error unlocking random achievement:', error);
+        console.error('[AchievementsPage] Error unlocking random achievement:', error);
       }
     },
 
     async resetAllAchievements() {
       if (confirm(this.$t('achievements.confirmReset'))) {
         try {
+          console.log("[AchievementsPage] Resetting all achievements...");
           await achievementsService.resetAllAchievements();
+
           // Reload achievements to reflect changes
           this.loadAchievements();
         } catch (error) {
-          console.error('Error resetting achievements:', error);
+          console.error('[AchievementsPage] Error resetting achievements:', error);
         }
       }
+    },
+
+    checkAchievementStatus() {
+      console.log("[AchievementsPage] Checking achievement status...");
+      this.loadAchievements();
     }
   },
 
   async mounted() {
+    console.log("[AchievementsPage] Component mounted");
     await this.loadAchievements();
+
+    // Check for new achievements every 30 seconds
+    this.refreshInterval = setInterval(() => {
+      console.log("[AchievementsPage] Refreshing achievements data");
+      this.loadAchievements();
+    }, 30000);
+
+    // Listen for task completion events to check for new achievements
+    document.addEventListener('task-completed', () => {
+      console.log("[AchievementsPage] Task completed event detected");
+      setTimeout(() => this.loadAchievements(), 1000);
+    });
+
+    // Also listen for task creation events
+    document.addEventListener('task-created', () => {
+      console.log("[AchievementsPage] Task created event detected");
+      setTimeout(() => this.loadAchievements(), 1000);
+    });
+  },
+
+  beforeUnmount() {
+    console.log("[AchievementsPage] Component will unmount");
+    // Clear refresh interval
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
+
+    // Remove event listeners
+    document.removeEventListener('task-completed', this.checkAchievementStatus);
+    document.removeEventListener('task-created', this.checkAchievementStatus);
   }
 };
 </script>
@@ -861,6 +971,10 @@ export default {
   flex-direction: column;
   gap: 0.5rem;
   z-index: 50;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 1rem;
+  border-radius: 8px;
+  max-width: 300px;
 }
 
 .debug-btn {
@@ -880,6 +994,19 @@ export default {
 .debug-btn.reset-all {
   background: #ff4444;
   color: white;
+}
+
+.debug-achievements-list {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: white;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.unlocked-debug {
+  color: #4CAF50;
+  margin-right: 0.5rem;
 }
 
 /* Animations */
