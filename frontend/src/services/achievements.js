@@ -285,13 +285,19 @@ class AchievementsService {
         try {
             // Get unlocked achievements from backend
             const response = await apiService.getAllAchievements(userId);
+            console.log("ACHIEVEMENT RESPONSE DATA:", response.data); // Debug line
             const unlockedAchievements = response.data || [];
+            console.log("Number of unlocked achievements:", unlockedAchievements.length); // Debug line
 
             // Create a map of unlocked achievement IDs for quick lookup
             const unlockedMap = {};
             unlockedAchievements.forEach(achievement => {
+                console.log("Processing achievement:", achievement); // Debug line
                 if (achievement && achievement.achievementId) {
                     unlockedMap[achievement.achievementId] = achievement;
+                    console.log("Added to unlockedMap:", achievement.achievementId); // Debug line
+                } else {
+                    console.warn("Achievement missing achievementId:", achievement); // Debug line
                 }
             });
 
@@ -299,7 +305,7 @@ class AchievementsService {
             const allAchievements = achievementsList.map(achievement => {
                 const isUnlocked = !!unlockedMap[achievement.id];
                 const unlockedData = unlockedMap[achievement.id] || {};
-
+                console.log(`Achievement ${achievement.id} unlocked status:`, isUnlocked);
                 // For secret achievements not yet unlocked, hide details
                 if (achievement.secret && !isUnlocked) {
                     return {

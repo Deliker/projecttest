@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.dto.AchievementDTO;
 import com.example.demo.model.Achievement;
 import com.example.demo.model.User;
 import com.example.demo.service.AchievementService;
@@ -38,10 +40,28 @@ public class AchievementController {
     @GetMapping
     public ResponseEntity<?> getAllAchievementsForUser(@RequestParam Long userId) {
         Optional<User> userOpt = userService.getUserById(userId);
-        
+
         if (userOpt.isPresent()) {
             List<Achievement> achievements = achievementService.getAllAchievementsForUser(userOpt.get());
-            return ResponseEntity.ok(achievements);
+
+            // Convert to DTO to avoid serialization issues
+            List<AchievementDTO> achievementDTOs = achievements.stream()
+                    .map(achievement -> new AchievementDTO(
+                            achievement.getId(),
+                            achievement.getAchievementId(),
+                            achievement.getTitle(),
+                            achievement.getDescription(),
+                            achievement.getIcon(),
+                            achievement.getPoints(),
+                            achievement.getCategory(),
+                            achievement.getUnlockedAt(),
+                            achievement.getUser().getId()))
+                    .collect(Collectors.toList());
+
+            // Debug log
+            System.out.println("Returning " + achievementDTOs.size() + " achievements as DTOs for user " + userId);
+
+            return ResponseEntity.ok(achievementDTOs);
         } else {
             Map<String, String> response = new HashMap<>();
             response.put("error", "User not found");
@@ -52,9 +72,21 @@ public class AchievementController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getAchievementById(@PathVariable Long id) {
         Optional<Achievement> achievementOpt = achievementService.getAchievementById(id);
-        
+
         if (achievementOpt.isPresent()) {
-            return ResponseEntity.ok(achievementOpt.get());
+            Achievement achievement = achievementOpt.get();
+            AchievementDTO dto = new AchievementDTO(
+                    achievement.getId(),
+                    achievement.getAchievementId(),
+                    achievement.getTitle(),
+                    achievement.getDescription(),
+                    achievement.getIcon(),
+                    achievement.getPoints(),
+                    achievement.getCategory(),
+                    achievement.getUnlockedAt(),
+                    achievement.getUser().getId());
+
+            return ResponseEntity.ok(dto);
         } else {
             Map<String, String> response = new HashMap<>();
             response.put("error", "Achievement not found");
@@ -66,12 +98,27 @@ public class AchievementController {
     public ResponseEntity<?> getAchievementsByCategory(
             @PathVariable String category,
             @RequestParam Long userId) {
-        
+
         Optional<User> userOpt = userService.getUserById(userId);
-        
+
         if (userOpt.isPresent()) {
             List<Achievement> achievements = achievementService.getAchievementsByCategory(userOpt.get(), category);
-            return ResponseEntity.ok(achievements);
+
+            // Convert to DTO
+            List<AchievementDTO> achievementDTOs = achievements.stream()
+                    .map(achievement -> new AchievementDTO(
+                            achievement.getId(),
+                            achievement.getAchievementId(),
+                            achievement.getTitle(),
+                            achievement.getDescription(),
+                            achievement.getIcon(),
+                            achievement.getPoints(),
+                            achievement.getCategory(),
+                            achievement.getUnlockedAt(),
+                            achievement.getUser().getId()))
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(achievementDTOs);
         } else {
             Map<String, String> response = new HashMap<>();
             response.put("error", "User not found");
@@ -83,12 +130,12 @@ public class AchievementController {
     public ResponseEntity<?> checkAchievement(
             @PathVariable String achievementId,
             @RequestParam Long userId) {
-        
+
         Optional<User> userOpt = userService.getUserById(userId);
-        
+
         if (userOpt.isPresent()) {
             boolean hasAchievement = achievementService.hasAchievement(userOpt.get(), achievementId);
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("hasAchievement", hasAchievement);
             return ResponseEntity.ok(response);
@@ -103,25 +150,37 @@ public class AchievementController {
     public ResponseEntity<?> unlockAchievement(
             @PathVariable String achievementId,
             @RequestParam Long userId) {
-        
+
         Optional<User> userOpt = userService.getUserById(userId);
-        
+
         if (!userOpt.isPresent()) {
             Map<String, String> response = new HashMap<>();
             response.put("error", "User not found");
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
-        
+
         try {
             Achievement achievement = achievementService.unlockAchievement(userOpt.get(), achievementId);
-            
+
             if (achievement == null) {
                 Map<String, String> response = new HashMap<>();
                 response.put("message", "Achievement already unlocked");
                 return ResponseEntity.ok(response);
             }
-            
-            return ResponseEntity.status(HttpStatus.CREATED).body(achievement);
+
+            // Convert to DTO
+            AchievementDTO dto = new AchievementDTO(
+                    achievement.getId(),
+                    achievement.getAchievementId(),
+                    achievement.getTitle(),
+                    achievement.getDescription(),
+                    achievement.getIcon(),
+                    achievement.getPoints(),
+                    achievement.getCategory(),
+                    achievement.getUnlockedAt(),
+                    achievement.getUser().getId());
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(dto);
         } catch (IllegalArgumentException e) {
             Map<String, String> response = new HashMap<>();
             response.put("error", e.getMessage());
@@ -132,10 +191,25 @@ public class AchievementController {
     @GetMapping("/latest")
     public ResponseEntity<?> getLatestAchievements(@RequestParam Long userId) {
         Optional<User> userOpt = userService.getUserById(userId);
-        
+
         if (userOpt.isPresent()) {
             List<Achievement> achievements = achievementService.getLatestAchievements(userOpt.get());
-            return ResponseEntity.ok(achievements);
+
+            // Convert to DTO
+            List<AchievementDTO> achievementDTOs = achievements.stream()
+                    .map(achievement -> new AchievementDTO(
+                            achievement.getId(),
+                            achievement.getAchievementId(),
+                            achievement.getTitle(),
+                            achievement.getDescription(),
+                            achievement.getIcon(),
+                            achievement.getPoints(),
+                            achievement.getCategory(),
+                            achievement.getUnlockedAt(),
+                            achievement.getUser().getId()))
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(achievementDTOs);
         } else {
             Map<String, String> response = new HashMap<>();
             response.put("error", "User not found");
@@ -146,7 +220,7 @@ public class AchievementController {
     @GetMapping("/stats")
     public ResponseEntity<?> getAchievementStats(@RequestParam Long userId) {
         Optional<User> userOpt = userService.getUserById(userId);
-        
+
         if (userOpt.isPresent()) {
             Map<String, Object> stats = achievementService.getAchievementStats(userOpt.get());
             return ResponseEntity.ok(stats);
@@ -160,7 +234,7 @@ public class AchievementController {
     @GetMapping("/category-counts")
     public ResponseEntity<?> getAchievementCountsByCategory(@RequestParam Long userId) {
         Optional<User> userOpt = userService.getUserById(userId);
-        
+
         if (userOpt.isPresent()) {
             Map<String, Long> categoryCounts = achievementService.getAchievementCountsByCategory(userOpt.get());
             return ResponseEntity.ok(categoryCounts);
@@ -174,10 +248,10 @@ public class AchievementController {
     @GetMapping("/points")
     public ResponseEntity<?> getTotalPoints(@RequestParam Long userId) {
         Optional<User> userOpt = userService.getUserById(userId);
-        
+
         if (userOpt.isPresent()) {
             Integer totalPoints = achievementService.getTotalPoints(userOpt.get());
-            
+
             Map<String, Object> response = new HashMap<>();
             response.put("totalPoints", totalPoints != null ? totalPoints : 0);
             return ResponseEntity.ok(response);
