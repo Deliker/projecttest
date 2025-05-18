@@ -25,6 +25,18 @@
     </div>
 
     <div v-else>
+      <!-- Debug info to help troubleshoot -->
+      <div class="debug-info" v-if="showDebugInfo">
+        <p>Total custom categories: {{ customCategories.length }}</p>
+        <ul>
+          <li v-for="(cat, index) in customCategories" :key="index">
+            ID: {{ cat.id }}, Name: {{ cat.name }}, Color: {{ cat.color }}, UserID: {{ cat.userId || 'undefined' }}
+          </li>
+        </ul>
+        <button @click="showDebugInfo = false" class="btn btn-sm">Hide Debug Info</button>
+        <button @click="refreshCategories()" class="btn btn-sm ml-2">Refresh Data</button>
+      </div>
+
       <!-- Default categories section -->
       <div class="categories-section">
         <h3>{{ $t('categories.default') }}</h3>
@@ -41,7 +53,11 @@
 
       <!-- Custom categories section -->
       <div class="categories-section">
-        <h3>{{ $t('categories.custom') }}</h3>
+        <h3>
+          {{ $t('categories.custom') }}
+          <span class="category-count">({{ customCategories.length }})</span>
+          <button v-if="!showDebugInfo" @click="showDebugInfo = true; refreshCategories()" class="btn btn-sm debug-btn">Debug</button>
+        </h3>
 
         <div v-if="customCategories.length === 0" class="no-categories">
           <div class="no-categories-icon">🏷️</div>
@@ -51,25 +67,30 @@
           </button>
         </div>
 
-        <div v-else class="categories-grid">
-          <div v-for="category in customCategories" :key="category.id" class="category-card">
-            <div class="category-color" :style="{ backgroundColor: category.color }"></div>
-            <div class="category-info">
-              <div class="category-name">{{ category.name }}</div>
-              <div class="category-type">{{ $t('categories.custom') }}</div>
-            </div>
-            <div class="category-actions">
-              <button class="category-action edit" @click="editCategory(category)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-              <button class="category-action delete" @click="confirmDeleteCategory(category)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
+        <div v-else>
+          <!-- Render each category in its own container without grid layout -->
+          <div class="categories-list">
+            <!-- Используем индекс как ключ и выводим индекс для отладки -->
+            <div v-for="(category, index) in customCategories" :key="'cat-'+index" class="category-card">
+              <span class="category-debug-index">#{{index}}</span>
+              <div class="category-color" :style="{ backgroundColor: category.color }"></div>
+              <div class="category-info">
+                <div class="category-name">{{ category.name }} <span class="category-id">(ID: {{ category.id }})</span></div>
+                <div class="category-type">{{ $t('categories.custom') }}</div>
+              </div>
+              <div class="category-actions">
+                <button class="category-action edit" @click="editCategory(category)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <button class="category-action delete" @click="confirmDeleteCategory(category)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -200,10 +221,11 @@ export default {
         { id: 'other', name: 'Other', color: '#757575' }
       ],
       customCategories: [],
+      showDebugInfo: false,
       isLoading: false,
       errorMessage: null,
 
-      // Modal state
+      // Modal states
       showCategoryModal: false,
       isEditing: false,
       categoryForm: {
@@ -216,13 +238,9 @@ export default {
         color: null
       },
       isSaving: false,
-
-      // Delete modal state
       showDeleteModal: false,
       categoryToDelete: null,
       isDeleting: false,
-
-      // Available colors for picker
       availableColors: [
         '#F44336', // Red
         '#E91E63', // Pink
@@ -262,14 +280,66 @@ export default {
           return;
         }
 
+        console.log('Fetching categories for user ID:', userId);
         const response = await apiService.getAllCategories(userId);
-        this.customCategories = response.data || [];
+        console.log('Categories API raw response:', response);
+
+        if (response.data) {
+          console.log('Response data type:', typeof response.data);
+          console.log('Is array?', Array.isArray(response.data));
+
+          if (Array.isArray(response.data)) {
+            // Log each item in the array for debugging
+            response.data.forEach((item, index) => {
+              console.log(`Category[${index}]:`, item);
+            });
+
+            // Make a fresh copy of the array to ensure reactivity
+            this.customCategories = JSON.parse(JSON.stringify(response.data));
+            console.log('Loaded categories count:', this.customCategories.length);
+
+            // Force rerendering
+            this.$forceUpdate();
+
+            // Show debug info automatically if there's an issue
+            if (this.customCategories.length > 0 && this.customCategories.length <= 1) {
+              this.showDebugInfo = true;
+            }
+          } else {
+            console.error('Unexpected response format (not an array):', response.data);
+            // Try to convert to array if it's not already
+            try {
+              const converted = Object.values(response.data);
+              if (converted && converted.length > 0) {
+                console.log('Converted to array:', converted);
+                this.customCategories = converted;
+              } else {
+                this.customCategories = [];
+                this.errorMessage = 'Unexpected data format received from server';
+              }
+            } catch (conversionError) {
+              console.error('Error converting response to array:', conversionError);
+              this.customCategories = [];
+              this.errorMessage = 'Error processing server response';
+            }
+          }
+        } else {
+          console.error('No data in response:', response);
+          this.customCategories = [];
+          this.errorMessage = this.$t('categories.loadError');
+        }
       } catch (error) {
         console.error('Failed to load categories:', error);
         this.errorMessage = this.$t('categories.loadError');
+        this.customCategories = [];
       } finally {
         this.isLoading = false;
       }
+    },
+
+    // Force a refresh of categories
+    refreshCategories() {
+      this.loadCategories();
     },
 
     openNewCategoryModal() {
@@ -321,8 +391,11 @@ export default {
           return;
         }
 
+        console.log('Saving category with user ID:', userId);
+
         if (this.isEditing) {
           // Update existing category
+          console.log('Updating category ID:', this.categoryForm.id);
           await apiService.updateCategory(
               this.categoryForm.id,
               {
@@ -333,6 +406,7 @@ export default {
           );
         } else {
           // Create new category
+          console.log('Creating new category with name:', this.categoryForm.name);
           await apiService.createCategory(
               {
                 name: this.categoryForm.name,
@@ -484,12 +558,68 @@ export default {
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
 }
 
+.category-count {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  margin-left: 0.5rem;
+}
+
+.debug-btn {
+  margin-left: auto;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  background-color: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.ml-2 {
+  margin-left: 0.5rem;
+}
+
+.debug-info {
+  background-color: rgba(var(--color-primary-rgb), 0.05);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.debug-info ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.debug-info .btn-sm {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  background-color: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Modified to ensure categories display properly */
 .categories-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 1.25rem;
+}
+
+/* New list layout to ensure all categories are visible */
+.categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .category-card {
@@ -537,6 +667,24 @@ export default {
   color: var(--color-text);
   margin-bottom: 0.4rem;
   transition: all 0.3s ease;
+}
+
+.category-id {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  font-weight: normal;
+}
+
+.category-debug-index {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 10px;
+  color: #999;
+  background: rgba(0,0,0,0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+  z-index: 1;
 }
 
 .category-card:hover .category-name {
@@ -886,10 +1034,6 @@ export default {
 
   .add-category-btn {
     width: 100%;
-  }
-
-  .categories-grid {
-    grid-template-columns: 1fr;
   }
 
   .color-picker {
