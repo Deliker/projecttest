@@ -1,4 +1,3 @@
-// frontend/src/components/AdminPanel.vue
 <template>
   <div class="admin-panel">
     <div class="admin-header">
@@ -38,8 +37,28 @@
         </div>
 
         <div class="users-list-container">
-          <div v-if="loading" class="loading-spinner"></div>
-          <div v-else-if="error" class="error-message">{{ error }}</div>
+          <div v-if="loading" class="loading-spinner-container">
+            <div class="loading-spinner"></div>
+            <p>Loading users data...</p>
+          </div>
+          <div v-else-if="error" class="error-message">
+            <p>{{ error }}</p>
+            <button @click="retryLoadUsers" class="btn retry-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M23 4v6h-6M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"></path>
+              </svg>
+              Retry
+            </button>
+          </div>
+          <div v-else-if="users.length === 0" class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <p>No users found in the system</p>
+          </div>
           <table v-else class="users-table">
             <thead>
             <tr>
@@ -110,7 +129,15 @@
           <h2>{{ $t('admin.dashboard.title') }}</h2>
         </div>
 
-        <div class="stats-cards">
+        <div v-if="statsLoading" class="loading-spinner-container">
+          <div class="loading-spinner"></div>
+          <p>Loading dashboard statistics...</p>
+        </div>
+        <div v-else-if="statsError" class="error-message">
+          <p>{{ statsError }}</p>
+          <button @click="loadStats" class="btn retry-btn">Retry</button>
+        </div>
+        <div v-else class="stats-cards">
           <div class="stat-card">
             <div class="stat-icon users-icon">
               <svg width="24" height="24" viewBox="0 0 24 24">
@@ -199,8 +226,15 @@
             </div>
           </div>
 
-          <button @click="saveSettings" class="btn primary-btn">
-            {{ $t('admin.settings.saveSettings') }}
+          <div v-if="settingsMessage" class="settings-message" :class="{ success: !settingsError, error: settingsError }">
+            {{ settingsMessage }}
+          </div>
+
+          <button @click="saveSettings" class="btn primary-btn" :disabled="settingsSaving">
+            <span v-if="settingsSaving">
+              <span class="spinner-small"></span> Saving...
+            </span>
+            <span v-else>{{ $t('admin.settings.saveSettings') }}</span>
           </button>
         </div>
       </div>
@@ -218,11 +252,14 @@
           <p>{{ $t('admin.users.deleteWarning') }}</p>
         </div>
         <div class="modal-footer">
-          <button class="btn cancel-btn" @click="showDeleteModal = false">
+          <button class="btn cancel-btn" @click="showDeleteModal = false" :disabled="deleteUserLoading">
             {{ $t('admin.actions.cancel') }}
           </button>
-          <button class="btn delete-btn" @click="deleteUser">
-            {{ $t('admin.actions.confirm') }}
+          <button class="btn delete-btn" @click="deleteUser" :disabled="deleteUserLoading">
+            <span v-if="deleteUserLoading">
+              <span class="spinner-small"></span> Deleting...
+            </span>
+            <span v-else>{{ $t('admin.actions.confirm') }}</span>
           </button>
         </div>
       </div>
@@ -252,14 +289,23 @@ export default {
       userSearchQuery: '',
       loading: false,
       error: null,
+
       stats: {},
+      statsLoading: false,
+      statsError: null,
+
       settings: {
         appName: 'TaskMaster',
         defaultLanguage: 'en',
         enableRegistration: true
       },
+      settingsSaving: false,
+      settingsMessage: null,
+      settingsError: false,
+
       showDeleteModal: false,
-      userToDelete: null
+      userToDelete: null,
+      deleteUserLoading: false
     };
   },
 
@@ -271,8 +317,8 @@ export default {
 
       const query = this.userSearchQuery.toLowerCase();
       return this.users.filter(user =>
-          user.name.toLowerCase().includes(query) ||
-          user.email.toLowerCase().includes(query)
+          user.name?.toLowerCase().includes(query) ||
+          user.email?.toLowerCase().includes(query)
       );
     }
   },
@@ -283,44 +329,80 @@ export default {
       this.error = null;
 
       try {
+        console.log('Starting to load users...');
         const response = await apiService.getAdminUsers();
         console.log('Users received:', response.data);
-        this.users = response.data;
+
+        // Make sure the response is an array
+        if (Array.isArray(response.data)) {
+          this.users = response.data;
+        } else {
+          console.warn('Unexpected response format, expected array:', response.data);
+          this.users = [];
+        }
+
+        this.loading = false;
       } catch (error) {
         console.error('Failed to load users:', error);
-        this.error = this.$t('admin.errors.loadUsers');
-      } finally {
+        this.error = this.$t('admin.errors.loadUsers') || 'Failed to load users. Please try again.';
         this.loading = false;
       }
     },
 
+    retryLoadUsers() {
+      this.loadUsers();
+    },
+
     async loadStats() {
+      this.statsLoading = true;
+      this.statsError = null;
+
       try {
+        console.log('Loading admin stats...');
         const response = await apiService.getAdminStats();
-        this.stats = response.data;
+        console.log('Stats received:', response.data);
+        this.stats = response.data || {};
+        this.statsLoading = false;
       } catch (error) {
         console.error('Failed to load stats:', error);
+        this.statsError = this.$t('admin.errors.loadStats');
+        this.statsLoading = false;
       }
     },
 
     async updateUserRole(userId, role) {
       try {
+        console.log(`Updating user ${userId} role to ${role}`);
         await apiService.updateUserRole(userId, { role });
-        // Successful notification could be added here
+        this.$notify({
+          title: this.$t('admin.notifications.roleUpdated'),
+          type: 'success'
+        });
       } catch (error) {
         console.error('Failed to update user role:', error);
-        // Error notification could be added here
+        this.$notify({
+          title: this.$t('admin.notifications.roleUpdateFailed'),
+          type: 'error'
+        });
       }
     },
 
     viewUser(userId) {
-      // Navigate to user details page or open modal
-      this.$router.push(`/admin/users/${userId}`);
+      // For demonstration purposes, show a notification
+      this.$notify({
+        title: `Viewing user ${userId}`,
+        text: 'User detail page not implemented yet',
+        type: 'info'
+      });
     },
 
     editUser(userId) {
-      // Navigate to user edit page or open modal
-      this.$router.push(`/admin/users/${userId}/edit`);
+      // For demonstration purposes, show a notification
+      this.$notify({
+        title: `Editing user ${userId}`,
+        text: 'User edit page not implemented yet',
+        type: 'info'
+      });
     },
 
     confirmDeleteUser(userId) {
@@ -331,25 +413,60 @@ export default {
     async deleteUser() {
       if (!this.userToDelete) return;
 
+      this.deleteUserLoading = true;
+
       try {
+        console.log(`Deleting user ${this.userToDelete}`);
         await apiService.deleteUser(this.userToDelete);
+
+        // Remove user from local array
         this.users = this.users.filter(user => user.id !== this.userToDelete);
+
         this.showDeleteModal = false;
         this.userToDelete = null;
+        this.deleteUserLoading = false;
+
+        // Reload stats
+        this.loadStats();
+
+        this.$notify({
+          title: this.$t('admin.notifications.userDeleted'),
+          type: 'success'
+        });
       } catch (error) {
         console.error('Failed to delete user:', error);
-        // Error notification could be added here
+        this.deleteUserLoading = false;
+
+        this.$notify({
+          title: this.$t('admin.notifications.userDeleteFailed'),
+          text: error.response?.data?.error || error.message,
+          type: 'error'
+        });
       }
     },
 
     async saveSettings() {
+      this.settingsSaving = true;
+      this.settingsMessage = null;
+      this.settingsError = false;
+
       try {
-        // API call to save settings
+        console.log('Saving settings:', this.settings);
         await apiService.updateAdminSettings(this.settings);
-        // Success notification could be added here
+
+        this.settingsMessage = this.$t('admin.settings.saveSuccess');
+        this.settingsError = false;
+
+        // Auto-hide message after 3 seconds
+        setTimeout(() => {
+          this.settingsMessage = null;
+        }, 3000);
       } catch (error) {
         console.error('Failed to save settings:', error);
-        // Error notification could be added here
+        this.settingsMessage = this.$t('admin.settings.saveError');
+        this.settingsError = true;
+      } finally {
+        this.settingsSaving = false;
       }
     },
 
@@ -361,10 +478,19 @@ export default {
         month: 'short',
         day: 'numeric'
       });
+    },
+
+    // Notification plugin placeholder (you might want to add a real notification system)
+    $notify(options) {
+      console.log('Notification:', options);
+      // In a real app, you would use a notification library like vue-toastification
     }
   },
 
   mounted() {
+    console.log('AdminPanel component mounted');
+    console.log('Current auth state:', this.$auth);
+    console.log('Is admin?', this.$auth.isAdmin ? this.$auth.isAdmin() : 'isAdmin method not found');
     this.loadUsers();
     this.loadStats();
   }
@@ -561,29 +687,79 @@ export default {
   color: white;
 }
 
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
 .loading-spinner {
   display: block;
   width: 40px;
   height: 40px;
-  margin: 2rem auto;
+  margin-bottom: 1rem;
   border: 4px solid rgba(var(--color-primary-rgb), 0.1);
   border-radius: 50%;
   border-top: 4px solid var(--color-primary);
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.spinner-small {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 0.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 2px solid white;
+  animation: spin 1s linear infinite;
 }
 
 .error-message {
-  padding: 1rem;
+  padding: 1.5rem;
   background: rgba(var(--color-danger-rgb), 0.1);
   color: var(--color-danger);
   border-radius: 8px;
   text-align: center;
-  margin: 1rem 0;
+  margin: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition-medium);
+}
+
+.retry-btn:hover {
+  background: var(--color-card-bg-hover);
+}
+
+.empty-state {
+  padding: 3rem 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.empty-state svg {
+  opacity: 0.5;
+  stroke-width: 1;
 }
 
 .stats-cards {
@@ -677,6 +853,24 @@ export default {
   box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.2);
 }
 
+.settings-message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.settings-message.success {
+  background: rgba(var(--color-success-rgb), 0.1);
+  color: var(--color-success);
+  border: 1px solid rgba(var(--color-success-rgb), 0.2);
+}
+
+.settings-message.error {
+  background: rgba(var(--color-danger-rgb), 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(var(--color-danger-rgb), 0.2);
+}
+
 .toggle-switch {
   position: relative;
   display: inline-block;
@@ -731,12 +925,20 @@ export default {
   transition: all var(--transition-medium);
 }
 
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .primary-btn {
   background: var(--color-primary);
   color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.primary-btn:hover {
+.primary-btn:hover:not(:disabled) {
   background: var(--color-primary-dark);
   transform: translateY(-3px);
   box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.3);
@@ -829,6 +1031,11 @@ export default {
   }
 }
 
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 @media (max-width: 768px) {
   .admin-tabs {
     overflow-x: auto;
@@ -847,6 +1054,17 @@ export default {
   .users-table {
     display: block;
     overflow-x: auto;
+  }
+
+  .search-box {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
 }
 </style>

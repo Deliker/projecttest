@@ -25,17 +25,17 @@ import CategoryManagement from './components/CategoryManagement.vue';
 auth.init();
 const requireAdminAuth = (to, from, next) => {
     if (!auth.isAuthenticated()) {
+        // User not authenticated, redirect to login
         next({
             path: '/auth',
-            query: {
-                redirect: to.fullPath,
-                mode: 'login'
-            }
+            query: { redirect: to.fullPath, mode: 'login' }
         });
-    } else if (!auth.isAdmin()) {
-        // Redirect non-admin users to the home page
+    } else if (!auth.state.user || auth.state.user.role !== 'ADMIN') {
+        // User authenticated but not admin, redirect to home
+        console.log("User not admin, redirecting to home");
         next({ path: '/' });
     } else {
+        // User is admin, proceed
         next();
     }
 };

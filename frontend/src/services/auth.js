@@ -1,4 +1,3 @@
-
 import apiService from './api';
 
 export default {
@@ -24,7 +23,8 @@ export default {
         this.state.user = JSON.parse(user);
         this.state.userId = parseInt(userId);
         this.state.isAuthenticated = true;
-        console.log("Auth initialized with user role:", this.state.user?.role);
+        console.log("Auth initialized with user:", this.state.user);
+        console.log("User role:", this.state.user?.role);
       } catch (e) {
         console.error('Error parsing stored user data', e);
         this.logout();
@@ -34,12 +34,29 @@ export default {
 
   // Check if current user has admin role
   isAdmin() {
-    console.log("Checking admin status, current role:", this.state.user?.role);
-    // Check for both uppercase and lowercase role values to be safe
-    return this.state.user &&
-        (this.state.user.role === 'ADMIN' ||
-            this.state.user.role === 'admin' ||
-            this.state.user.role === 'Admin');
+    console.log("Checking admin status, current user:", this.state.user);
+
+    if (!this.state.user) {
+      console.log("No user is logged in");
+      return false;
+    }
+
+    // Check role in different formats since it might be stored differently
+    const role = this.state.user.role;
+    console.log("User role:", role, "Type:", typeof role);
+
+    if (typeof role === 'string') {
+      const normalizedRole = role.toUpperCase();
+      console.log("Normalized role:", normalizedRole);
+      return normalizedRole === 'ADMIN';
+    } else if (typeof role === 'object' && role !== null) {
+      // Handle when role is an object with name property
+      const roleName = role.name || '';
+      console.log("Role object name:", roleName);
+      return roleName.toUpperCase() === 'ADMIN';
+    }
+
+    return false;
   },
 
   // Register a new user
@@ -70,10 +87,16 @@ export default {
 
       // Make sure we get the role from the response
       const { id, name, email: userEmail, token, role } = response.data;
+      console.log("Login response:", response.data);
 
       // Store auth data including role
       this.state.isAuthenticated = true;
-      this.state.user = { name, email: userEmail, role };
+      this.state.user = {
+        id,
+        name,
+        email: userEmail,
+        role
+      };
       this.state.userId = id;
       this.state.token = token;
 
@@ -81,6 +104,9 @@ export default {
       localStorage.setItem('auth_token', token);
       localStorage.setItem('user', JSON.stringify(this.state.user));
       localStorage.setItem('user_id', id);
+
+      console.log("User stored after login:", this.state.user);
+      console.log("Is admin after login?", this.isAdmin());
 
       this.state.loading = false;
       return response.data;
@@ -113,6 +139,7 @@ export default {
 
     try {
       const response = await apiService.getUserInfo(this.state.userId);
+      console.log("Profile response:", response.data);
 
       // If the profile response includes role information, update it
       if (response.data && response.data.role) {
@@ -121,6 +148,8 @@ export default {
           role: response.data.role
         };
         localStorage.setItem('user', JSON.stringify(this.state.user));
+        console.log("Updated user role:", this.state.user.role);
+        console.log("Is admin after profile update?", this.isAdmin());
       }
 
       return response.data;

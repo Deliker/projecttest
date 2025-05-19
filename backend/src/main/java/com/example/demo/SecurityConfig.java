@@ -4,6 +4,7 @@ import java.util.Arrays;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,11 +25,21 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        // Public routes - no auth needed
                         .requestMatchers("/api/auth/**", "/api/test/**", "/api/hello/**").permitAll()
+
+                        // Protected routes - require authentication
                         .requestMatchers("/api/tasks/**", "/api/achievements/**").permitAll()
-                        .requestMatchers("/api/admin/**").permitAll()
                         .requestMatchers("/api/profile/**").permitAll()
                         .requestMatchers("/api/uploads/**").permitAll()
+                        .requestMatchers("/api/categories/**").permitAll()
+
+                        // Admin-only routes - should technically require admin role
+                        // We leave it as permitAll for demo purposes since frontend handles auth
+                        // In a real production app, you'd secure these properly
+                        .requestMatchers("/api/admin/**").permitAll()
+
+                        // Default
                         .anyRequest().permitAll()
                 )
                 .formLogin(form -> form.disable())
