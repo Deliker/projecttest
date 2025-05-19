@@ -46,6 +46,7 @@ public class AuthController {
             response.put("id", savedUser.getId());
             response.put("name", savedUser.getName());
             response.put("email", savedUser.getEmail());
+            response.put("role", user.getRole());
             response.put("message", "User registered successfully");
             
             return ResponseEntity.status(HttpStatus.CREATED).body(response);

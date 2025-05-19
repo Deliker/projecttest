@@ -11,7 +11,7 @@ import auth from './services/auth';
 
 // Import the TaskAttachments component
 import TaskAttachments from './components/TaskAttachments.vue';
-
+import AchievementNotification from './components/AchievementsNotification.vue';
 // Import components
 import HomePage from './components/HomePage.vue';
 import CalendarPage from './components/CalendarPage.vue';
@@ -141,6 +141,8 @@ const app = createApp(App);
 
 // Register TaskAttachments component globally
 app.component('TaskAttachments', TaskAttachments);
+
+app.component('AchievementNotification', AchievementNotification);
 
 // Global properties
 app.config.globalProperties.$auth = auth.state;

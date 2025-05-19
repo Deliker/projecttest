@@ -1,40 +1,6 @@
 // frontend/src/components/AdminPanel.vue
 <template>
   <div class="admin-panel">
-    <div class="admin-debug-info" v-if="shouldShowDebug">
-      <div class="debug-header">
-        <h3>Admin Panel Debug Info</h3>
-        <button @click="toggleDebugInfo" class="toggle-debug-btn">
-          {{ showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info' }}
-        </button>
-      </div>
-
-      <div v-if="showDebugInfo" class="debug-content">
-        <div class="debug-item">
-          <strong>Is Authenticated:</strong> {{ $auth.isAuthenticated }}
-        </div>
-        <div class="debug-item">
-          <strong>Current User:</strong> {{ $auth.user ? $auth.user.name : 'None' }}
-        </div>
-        <div class="debug-item">
-          <strong>User Role:</strong> {{ $auth.user ? $auth.user.role : 'None' }}
-        </div>
-        <div class="debug-item">
-          <strong>User ID:</strong> {{ $auth.userId }}
-        </div>
-        <div class="debug-actions">
-          <button @click="checkAdminStatus" class="debug-btn">
-            Check Admin Status
-          </button>
-          <button @click="refreshUserInfo" class="debug-btn">
-            Refresh User Info
-          </button>
-        </div>
-        <div v-if="debugMessage" class="debug-message">
-          {{ debugMessage }}
-        </div>
-      </div>
-    </div>
     <div class="admin-header">
       <h1 class="admin-title">{{ $t('admin.title') }}</h1>
       <p class="admin-subtitle">{{ $t('admin.subtitle') }}</p>
@@ -318,6 +284,7 @@ export default {
 
       try {
         const response = await apiService.getAdminUsers();
+        console.log('Users received:', response.data);
         this.users = response.data;
       } catch (error) {
         console.error('Failed to load users:', error);

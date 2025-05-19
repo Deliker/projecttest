@@ -251,6 +251,19 @@ class AchievementsService {
         const achievementInfo = achievementsList.find(a => a.id === achievement.id);
         if (!achievementInfo) return;
 
+        // Check if we've already notified for this achievement recently
+        const recentNotificationKey = `recent_achievement_${achievement.id}`;
+        if (window[recentNotificationKey]) {
+            console.log('Skipping duplicate notification for:', achievement.id);
+            return;
+        }
+
+        // Mark this achievement as recently notified (prevent duplicates for 5 seconds)
+        window[recentNotificationKey] = true;
+        setTimeout(() => {
+            window[recentNotificationKey] = false;
+        }, 5000);
+
         // Create and dispatch the event
         const event = new CustomEvent('achievement-unlocked', {
             detail: {

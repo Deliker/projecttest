@@ -187,20 +187,12 @@
         </div>
       </div>
     </div>
-
-    <!-- Add the AchievementNotification component -->
-    <AchievementNotification />
   </div>
 </template>
 
 <script>
 import achievementsService, { achievementCategories } from '@/services/achievements';
-import AchievementNotification from '@/components/AchievementsNotification.vue';
-
 export default {
-  components: {
-    AchievementNotification
-  },
   data() {
     return {
       searchQuery: '',

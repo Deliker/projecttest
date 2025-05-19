@@ -14,6 +14,7 @@ export default {
         categories: 'Categories'
     },
 
+
     // Home Page
     home: {
         hero: {
@@ -279,7 +280,18 @@ export default {
     // Admin Panel
     admin: {
         title: 'Admin Panel',
-        subtitle: 'Manage users, view statistics, and configure system settings',
+        subtitle: 'Manage users, tasks, and settings',
+        roles: {
+            admin: 'Admin',
+            user: 'User'
+        },
+        actions: {
+            view: 'View',
+            edit: 'Edit',
+            delete: 'Delete',
+            cancel: 'Cancel',
+            confirm: 'Confirm'
+        },
         tabs: {
             users: 'Users',
             dashboard: 'Dashboard',
@@ -287,42 +299,31 @@ export default {
         },
         users: {
             title: 'User Management',
-            search: 'Search users...',
             name: 'Name',
             email: 'Email',
             role: 'Role',
             lastActive: 'Last Active',
             actions: 'Actions',
-            confirmDelete: 'Confirm Delete User',
-            deleteWarning: 'This action cannot be undone. This will permanently delete the user account and all associated data.'
-        },
-        roles: {
-            user: 'User',
-            admin: 'Administrator'
-        },
-        actions: {
-            view: 'View',
-            edit: 'Edit',
-            delete: 'Delete',
-            confirm: 'Confirm',
-            cancel: 'Cancel'
+            search: 'Search users...',
+            confirmDelete: 'Delete User',
+            deleteWarning: 'Are you sure you want to delete this user? This action cannot be undone.'
         },
         dashboard: {
-            title: 'Dashboard',
+            title: 'Admin Dashboard',
             totalUsers: 'Total Users',
             totalTasks: 'Total Tasks',
             completedTasks: 'Completed Tasks',
             totalAchievements: 'Total Achievements'
         },
         settings: {
-            title: 'System Settings',
+            title: 'Admin Settings',
             appName: 'Application Name',
             defaultLanguage: 'Default Language',
-            enableRegistration: 'Enable Registration',
+            enableRegistration: 'Enable User Registration',
             saveSettings: 'Save Settings'
         },
         errors: {
-            loadUsers: 'Failed to load users. Please try again.'
+            loadUsers: 'Failed to load users.'
         }
     },
 

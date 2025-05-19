@@ -559,25 +559,6 @@
       </div>
     </transition>
 
-    <transition name="notification-slide">
-      <div v-if="showNotification" class="achievement-notification">
-        <div class="achievement-notification-content">
-          <div class="achievement-icon">🏆</div>
-          <div class="achievement-text">
-            <div class="achievement-title">{{ $t('calendar.achievements.unlocked') }}</div>
-            <div class="achievement-description">{{ notificationMessage }}</div>
-          </div>
-          <button @click="showNotification = false" class="notification-close" aria-label="Close notification">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-        <div class="achievement-progress">
-          <div class="progress-bar" :style="{ width: notificationProgress + '%' }"></div>
-        </div>
-      </div>
-    </transition>
 
     <transition name="notification-slide">
       <div v-if="showTimerNotification" class="timer-notification">
@@ -692,10 +673,6 @@ export default {
         categories: [],
         priorities: []
       },
-      showNotification: false,
-      notificationMessage: '',
-      notificationProgress: 100,
-      notificationTimer: null,
       isLoading: false,
       loadingError: null,
       months: [
@@ -3805,47 +3782,6 @@ export default {
   padding-top: 1rem;
 }
 
-.achievement-notification {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background: var(--color-card-bg);
-  border-radius: 16px;
-  overflow: hidden;
-  width: 350px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-  z-index: 100;
-  border: 1px solid var(--color-primary);
-  animation: notification-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.achievement-notification-content {
-  display: flex;
-  padding: 1.25rem;
-  align-items: center;
-  gap: 1rem;
-  position: relative;
-}
-
-.achievement-icon {
-  font-size: 2.5rem;
-}
-
-.achievement-text {
-  flex: 1;
-}
-
-.achievement-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  margin-bottom: 0.25rem;
-}
-
-.achievement-description {
-  font-size: 0.9rem;
-  color: var(--color-text);
-}
 
 .notification-close {
   background: transparent;

@@ -40,20 +40,13 @@ export default {
     };
   },
   mounted() {
-    // Ensure we only register the event listener once by using a window-level check
-    if (!window.achievementListenerRegistered) {
-      // Add a flag to window to track if the listener is already registered
-      window.achievementListenerRegistered = true;
+    // Clear any existing listeners to avoid duplicates
+    document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
 
-      // Remove any existing listeners first to avoid duplicates
-      document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
+    // Set up a single listener
+    document.addEventListener('achievement-unlocked', this.handleAchievementUnlocked);
 
-      // Add the event listener
-      document.addEventListener('achievement-unlocked', this.handleAchievementUnlocked);
-      console.log('🏆 Achievement notification listener registered (singleton)');
-    } else {
-      console.log('🏆 Achievement notification listener already registered, skipping');
-    }
+    console.log('🏆 Achievement notification listener registered');
 
     this.isMounted = true;
   },

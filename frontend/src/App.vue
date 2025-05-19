@@ -47,13 +47,18 @@
             </svg>
             <span>{{ $t('nav.achievements') }}</span>
           </router-link>
-          <router-link to="/about" class="nav-item" @click="closeMobileNav">
+          <router-link
+              v-if="isUserAuthenticated && $auth.user && $auth.user.role === 'ADMIN'"
+              to="/admin"
+              class="nav-item"
+              @click="closeMobileNav"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="nav-icon">
               <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="M12 8V8.01" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="M12 12V16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <span>{{ $t('nav.about') }}</span>
+            <span>Admin Panel</span>
           </router-link>
           <router-link
               v-if="$auth.isAdmin"
@@ -172,6 +177,7 @@
         </div>
         <div class="achievement-progress">
           <div class="progress-bar" :style="{ width: notificationProgress + '%' }"></div>
+          <AchievementNotification />o
         </div>
       </div>
     </transition>
@@ -210,6 +216,9 @@ export default {
     },
     currentUserName() {
       return this.$auth.user?.name || '';
+    },
+    isAdmin() {
+      return this.$auth.user?.role === 'ADMIN';
     }
   },
   watch: {
