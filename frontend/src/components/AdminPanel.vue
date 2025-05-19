@@ -88,7 +88,8 @@
               <td>{{ formatDate(user.lastActive) }}</td>
               <td class="actions-cell">
                 <button
-                    @click="viewUser(user.id)"
+                    type="button"
+                    @click="handleViewClick(user.id)"
                     class="action-btn view-btn"
                     :title="$t('admin.actions.view')"
                 >
@@ -98,7 +99,8 @@
                   </svg>
                 </button>
                 <button
-                    @click="editUser(user.id)"
+                    type="button"
+                    @click="handleEditClick(user.id)"
                     class="action-btn edit-btn"
                     :title="$t('admin.actions.edit')"
                 >
@@ -108,6 +110,7 @@
                   </svg>
                 </button>
                 <button
+                    type="button"
                     @click="confirmDeleteUser(user.id)"
                     class="action-btn delete-btn"
                     :title="$t('admin.actions.delete')"
@@ -240,7 +243,258 @@
       </div>
     </div>
 
-    <!-- Confirmation Modal -->
+    <!-- Тестовое модальное окно для проверки -->
+    <div class="test-modal-button" v-if="activeTab === 'users'">
+      <button @click="showTestModal = true" class="btn test-btn">
+        Тестовое модальное окно
+      </button>
+
+      <div v-if="showTestModal" class="test-modal">
+        <div class="modal-overlay" @click="showTestModal = false"></div>
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3>Тестовое модальное окно</h3>
+            <button class="close-btn" @click="showTestModal = false">×</button>
+          </div>
+          <div class="modal-body">
+            <p>Это тестовое модальное окно для проверки работы модальных компонентов.</p>
+          </div>
+          <div class="modal-footer">
+            <button @click="showTestModal = false" class="btn cancel-btn">Закрыть</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User View Modal -->
+    <div v-if="showViewModal" class="modal">
+      <div class="modal-overlay" @click="closeViewModal"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3>{{ $t('admin.users.viewUser') }}</h3>
+          <button class="close-btn" @click="closeViewModal">×</button>
+        </div>
+        <div v-if="viewLoading" class="modal-body loading-container">
+          <div class="loading-spinner"></div>
+          <p>{{ $t('admin.users.loading') }}</p>
+        </div>
+        <div v-else-if="viewError" class="modal-body error-container">
+          <p class="error-message">{{ viewError }}</p>
+          <button @click="loadUserForView" class="btn retry-btn">
+            {{ $t('admin.actions.retry') }}
+          </button>
+        </div>
+        <div v-else-if="viewUser" class="modal-body">
+          <div class="user-profile">
+            <div class="user-header">
+              <div class="user-avatar">
+                <img v-if="viewUser.avatarUrl" :src="viewUser.avatarUrl" alt="User avatar" />
+                <div v-else class="avatar-placeholder">
+                  {{ getUserInitials(viewUser) }}
+                </div>
+              </div>
+              <div class="user-basic-info">
+                <h2>{{ viewUser.name }}</h2>
+                <p class="user-email">{{ viewUser.email }}</p>
+                <span class="user-role" :class="{ 'admin-role': isUserAdmin(viewUser) }">
+                  {{ isUserAdmin(viewUser) ? $t('admin.roles.admin') : $t('admin.roles.user') }}
+                </span>
+              </div>
+            </div>
+
+            <div class="user-stats">
+              <div class="stat-item">
+                <div class="stat-icon tasks-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                </div>
+                <div class="stat-details">
+                  <div class="stat-value">{{ viewUser.totalTasks || 0 }}</div>
+                  <div class="stat-label">{{ $t('admin.users.totalTasks') }}</div>
+                </div>
+              </div>
+
+              <div class="stat-item">
+                <div class="stat-icon completed-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                </div>
+                <div class="stat-details">
+                  <div class="stat-value">{{ viewUser.completedTasks || 0 }}</div>
+                  <div class="stat-label">{{ $t('admin.users.completedTasks') }}</div>
+                </div>
+              </div>
+
+              <div class="stat-item">
+                <div class="stat-icon achievements-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <circle cx="12" cy="8" r="7"></circle>
+                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                  </svg>
+                </div>
+                <div class="stat-details">
+                  <div class="stat-value">{{ viewUser.achievements || 0 }}</div>
+                  <div class="stat-label">{{ $t('admin.users.achievements') }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="user-details">
+              <div class="detail-row" v-if="viewUser.lastActive">
+                <span class="detail-label">{{ $t('admin.users.lastActive') }}:</span>
+                <span class="detail-value">{{ formatDate(viewUser.lastActive) }}</span>
+              </div>
+
+              <div class="detail-row" v-if="viewUser.jobTitle">
+                <span class="detail-label">{{ $t('admin.users.jobTitle') }}:</span>
+                <span class="detail-value">{{ viewUser.jobTitle }}</span>
+              </div>
+
+              <div class="detail-row" v-if="viewUser.location">
+                <span class="detail-label">{{ $t('admin.users.location') }}:</span>
+                <span class="detail-value">{{ viewUser.location }}</span>
+              </div>
+
+              <div class="detail-row" v-if="viewUser.theme">
+                <span class="detail-label">{{ $t('admin.users.theme') }}:</span>
+                <span class="detail-value">{{ viewUser.theme === 'dark' ? $t('admin.users.darkTheme') : $t('admin.users.lightTheme') }}</span>
+              </div>
+            </div>
+
+            <div class="bio-section" v-if="viewUser.bio">
+              <h4>{{ $t('admin.users.bio') }}</h4>
+              <p>{{ viewUser.bio }}</p>
+            </div>
+          </div>
+        </div>
+        <div v-else class="modal-body">
+          <p class="empty-message">{{ $t('admin.users.userNotFound') }}</p>
+        </div>
+        <div class="modal-footer">
+          <button @click="closeViewModal" class="btn cancel-btn">{{ $t('admin.actions.close') }}</button>
+          <button @click="handleEditClick(selectedUserId)" class="btn primary-btn">{{ $t('admin.actions.edit') }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Edit Modal -->
+    <div v-if="showEditModal" class="modal">
+      <div class="modal-overlay" @click="closeEditModal"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3>{{ $t('admin.users.editUser') }}</h3>
+          <button class="close-btn" @click="closeEditModal">×</button>
+        </div>
+        <div v-if="editLoading" class="modal-body loading-container">
+          <div class="loading-spinner"></div>
+          <p>{{ $t('admin.users.loading') }}</p>
+        </div>
+        <div v-else-if="editError" class="modal-body error-container">
+          <p class="error-message">{{ editError }}</p>
+          <button @click="loadUserForEdit" class="btn retry-btn">
+            {{ $t('admin.actions.retry') }}
+          </button>
+        </div>
+        <div v-else-if="editUser" class="modal-body">
+          <form @submit.prevent="saveUserChanges" class="user-edit-form">
+            <div class="form-group">
+              <label for="name">{{ $t('admin.users.name') }}</label>
+              <input
+                  type="text"
+                  id="name"
+                  v-model="editUser.name"
+                  class="form-control"
+                  required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="email">{{ $t('admin.users.email') }}</label>
+              <input
+                  type="email"
+                  id="email"
+                  v-model="editUser.email"
+                  class="form-control"
+                  required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="role">{{ $t('admin.users.role') }}</label>
+              <select id="role" v-model="editUser.role" class="form-control">
+                <option value="USER">{{ $t('admin.roles.user') }}</option>
+                <option value="ADMIN">{{ $t('admin.roles.admin') }}</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="jobTitle">{{ $t('admin.users.jobTitle') }}</label>
+              <input
+                  type="text"
+                  id="jobTitle"
+                  v-model="editUser.jobTitle"
+                  class="form-control"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="location">{{ $t('admin.users.location') }}</label>
+              <input
+                  type="text"
+                  id="location"
+                  v-model="editUser.location"
+                  class="form-control"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="theme">{{ $t('admin.users.theme') }}</label>
+              <select id="theme" v-model="editUser.theme" class="form-control">
+                <option value="dark">{{ $t('admin.users.darkTheme') }}</option>
+                <option value="light">{{ $t('admin.users.lightTheme') }}</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="bio">{{ $t('admin.users.bio') }}</label>
+              <textarea
+                  id="bio"
+                  v-model="editUser.bio"
+                  class="form-control text-area"
+                  rows="4"
+              ></textarea>
+            </div>
+          </form>
+
+          <div v-if="saveError" class="save-error-message">
+            {{ saveError }}
+          </div>
+        </div>
+        <div v-else class="modal-body">
+          <p class="empty-message">{{ $t('admin.users.userNotFound') }}</p>
+        </div>
+        <div class="modal-footer">
+          <button @click="closeEditModal" class="btn cancel-btn" :disabled="saving">
+            {{ $t('admin.actions.cancel') }}
+          </button>
+          <button @click="saveUserChanges" class="btn primary-btn" :disabled="saving || !editUser">
+            <span v-if="saving">
+              <span class="spinner-small"></span> {{ $t('admin.users.saving') }}
+            </span>
+            <span v-else>{{ $t('admin.actions.save') }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal for Delete -->
     <div v-if="showDeleteModal" class="modal">
       <div class="modal-overlay" @click="showDeleteModal = false"></div>
       <div class="modal-container">
@@ -303,6 +557,27 @@ export default {
       settingsMessage: null,
       settingsError: false,
 
+      // Модальные окна и состояния пользователей
+      selectedUserId: null,
+
+      // Тестовое модальное окно
+      showTestModal: false,
+
+      // View Modal
+      showViewModal: false,
+      viewUser: null,
+      viewLoading: false,
+      viewError: null,
+
+      // Edit Modal
+      showEditModal: false,
+      editUser: null,
+      editLoading: false,
+      editError: null,
+      saving: false,
+      saveError: null,
+
+      // Delete Modal
       showDeleteModal: false,
       userToDelete: null,
       deleteUserLoading: false
@@ -370,41 +645,188 @@ export default {
       }
     },
 
+    // Обработчики кнопок действий пользователей
+    handleViewClick(userId) {
+      console.log('View button clicked for user:', userId);
+      this.selectedUserId = userId;
+      this.showViewModal = true;
+      this.loadUserForView();
+    },
+
+    handleEditClick(userId) {
+      console.log('Edit button clicked for user:', userId);
+      this.selectedUserId = userId;
+      this.showEditModal = true;
+      this.showViewModal = false; // Закрываем окно просмотра, если открыто
+      this.loadUserForEdit();
+    },
+
+    // Загрузка данных пользователя для просмотра
+    async loadUserForView() {
+      if (!this.selectedUserId) return;
+
+      this.viewLoading = true;
+      this.viewError = null;
+
+      try {
+        console.log('Loading user details for view, ID:', this.selectedUserId);
+        const response = await apiService.getUserById(this.selectedUserId);
+        this.viewUser = response.data;
+        console.log('User details loaded for view:', this.viewUser);
+      } catch (error) {
+        console.error('Failed to load user details for view:', error);
+        this.viewError = this.$t('admin.errors.loadUserDetails');
+      } finally {
+        this.viewLoading = false;
+      }
+    },
+
+    // Загрузка данных пользователя для редактирования
+    async loadUserForEdit() {
+      if (!this.selectedUserId) return;
+
+      this.editLoading = true;
+      this.editError = null;
+
+      try {
+        console.log('Loading user details for edit, ID:', this.selectedUserId);
+        const response = await apiService.getUserById(this.selectedUserId);
+        const userData = response.data;
+
+        // Создаем копию для редактирования
+        this.editUser = {
+          id: userData.id,
+          name: userData.name || '',
+          email: userData.email || '',
+          role: this.normalizeRole(userData.role),
+          jobTitle: userData.jobTitle || '',
+          location: userData.location || '',
+          theme: userData.theme || 'dark',
+          bio: userData.bio || ''
+        };
+
+        console.log('User details loaded for edit:', this.editUser);
+      } catch (error) {
+        console.error('Failed to load user details for edit:', error);
+        this.editError = this.$t('admin.errors.loadUserDetails');
+      } finally {
+        this.editLoading = false;
+      }
+    },
+
+    // Нормализация роли пользователя
+    normalizeRole(role) {
+      if (typeof role === 'string') {
+        return role;
+      } else if (typeof role === 'object' && role) {
+        return role.name || 'USER';
+      }
+      return 'USER';
+    },
+
+    // Проверка, является ли пользователь администратором
+    isUserAdmin(user) {
+      if (!user) return false;
+
+      const role = user.role;
+      if (typeof role === 'string') {
+        return role.toUpperCase() === 'ADMIN';
+      } else if (typeof role === 'object' && role) {
+        return (role.name || '').toUpperCase() === 'ADMIN';
+      }
+
+      return false;
+    },
+
+    // Получение инициалов пользователя
+    getUserInitials(user) {
+      if (!user || !user.name) return '?';
+
+      return user.name
+          .split(' ')
+          .map(name => name.charAt(0))
+          .join('')
+          .toUpperCase()
+          .substring(0, 2);
+    },
+
+    // Закрытие модальных окон
+    closeViewModal() {
+      console.log('Closing view modal');
+      this.showViewModal = false;
+      this.viewUser = null;
+    },
+
+    closeEditModal() {
+      console.log('Closing edit modal');
+      this.showEditModal = false;
+      this.editUser = null;
+      this.saveError = null;
+    },
+
+    // Сохранение изменений пользователя
+    async saveUserChanges() {
+      if (!this.editUser) return;
+
+      this.saving = true;
+      this.saveError = null;
+
+      try {
+        console.log('Saving user changes:', this.editUser);
+
+        // Сначала обновляем роль, если она изменилась
+        if (this.editUser.role !== this.normalizeRole(this.viewUser?.role)) {
+          console.log('Updating role to:', this.editUser.role);
+          await apiService.updateUserRole(this.editUser.id, { role: this.editUser.role });
+        }
+
+        // Затем обновляем профиль пользователя
+        await apiService.updateProfile(this.editUser.id, {
+          name: this.editUser.name,
+          bio: this.editUser.bio,
+          theme: this.editUser.theme,
+          location: this.editUser.location,
+          jobTitle: this.editUser.jobTitle
+        });
+
+        // Находим и обновляем пользователя в списке
+        const index = this.users.findIndex(u => u.id === this.editUser.id);
+        if (index !== -1) {
+          this.users[index] = {
+            ...this.users[index],
+            ...this.editUser
+          };
+        }
+
+        // Закрываем модальное окно
+        this.showEditModal = false;
+
+        // Показываем уведомление
+        alert(this.$t('admin.notifications.userUpdated'));
+
+        // Обновляем список пользователей
+        this.loadUsers();
+      } catch (error) {
+        console.error('Failed to save user changes:', error);
+        this.saveError = this.$t('admin.errors.saveUser');
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    // Обновление роли пользователя
     async updateUserRole(userId, role) {
       try {
         console.log(`Updating user ${userId} role to ${role}`);
         await apiService.updateUserRole(userId, { role });
-        this.$notify({
-          title: this.$t('admin.notifications.roleUpdated'),
-          type: 'success'
-        });
+        alert(this.$t('admin.notifications.roleUpdated'));
       } catch (error) {
         console.error('Failed to update user role:', error);
-        this.$notify({
-          title: this.$t('admin.notifications.roleUpdateFailed'),
-          type: 'error'
-        });
+        alert(this.$t('admin.notifications.roleUpdateFailed'));
       }
     },
 
-    viewUser(userId) {
-      // For demonstration purposes, show a notification
-      this.$notify({
-        title: `Viewing user ${userId}`,
-        text: 'User detail page not implemented yet',
-        type: 'info'
-      });
-    },
-
-    editUser(userId) {
-      // For demonstration purposes, show a notification
-      this.$notify({
-        title: `Editing user ${userId}`,
-        text: 'User edit page not implemented yet',
-        type: 'info'
-      });
-    },
-
+    // Удаление пользователя
     confirmDeleteUser(userId) {
       this.userToDelete = userId;
       this.showDeleteModal = true;
@@ -419,32 +841,26 @@ export default {
         console.log(`Deleting user ${this.userToDelete}`);
         await apiService.deleteUser(this.userToDelete);
 
-        // Remove user from local array
+        // Удаляем пользователя из списка
         this.users = this.users.filter(user => user.id !== this.userToDelete);
 
         this.showDeleteModal = false;
         this.userToDelete = null;
         this.deleteUserLoading = false;
 
-        // Reload stats
+        // Обновляем статистику
         this.loadStats();
 
-        this.$notify({
-          title: this.$t('admin.notifications.userDeleted'),
-          type: 'success'
-        });
+        alert(this.$t('admin.notifications.userDeleted'));
       } catch (error) {
         console.error('Failed to delete user:', error);
         this.deleteUserLoading = false;
 
-        this.$notify({
-          title: this.$t('admin.notifications.userDeleteFailed'),
-          text: error.response?.data?.error || error.message,
-          type: 'error'
-        });
+        alert(this.$t('admin.notifications.userDeleteFailed'));
       }
     },
 
+    // Настройки приложения
     async saveSettings() {
       this.settingsSaving = true;
       this.settingsMessage = null;
@@ -457,7 +873,7 @@ export default {
         this.settingsMessage = this.$t('admin.settings.saveSuccess');
         this.settingsError = false;
 
-        // Auto-hide message after 3 seconds
+        // Скрываем сообщение через 3 секунды
         setTimeout(() => {
           this.settingsMessage = null;
         }, 3000);
@@ -470,27 +886,27 @@ export default {
       }
     },
 
+    // Форматирование даты
     formatDate(dateString) {
-      if (!dateString) return 'N/A';
+      if (!dateString) return this.$t('admin.users.never') || 'N/A';
 
       return new Date(dateString).toLocaleDateString(this.i18n.locale.value, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
-    },
-
-    // Notification plugin placeholder (you might want to add a real notification system)
-    $notify(options) {
-      console.log('Notification:', options);
-      // In a real app, you would use a notification library like vue-toastification
     }
   },
 
   mounted() {
     console.log('AdminPanel component mounted');
     console.log('Current auth state:', this.$auth);
-    console.log('Is admin?', this.$auth.isAdmin ? this.$auth.isAdmin() : 'isAdmin method not found');
+
+    // Инициализируем состояния модальных окон
+    this.showViewModal = false;
+    this.showEditModal = false;
+    this.selectedUserId = null;
+
     this.loadUsers();
     this.loadStats();
   }
@@ -718,33 +1134,34 @@ export default {
 }
 
 .error-message {
-  padding: 1.5rem;
-  background: rgba(var(--color-danger-rgb), 0.1);
   color: var(--color-danger);
-  border-radius: 8px;
   text-align: center;
-  margin: 1.5rem 0;
+}
+
+.error-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
+  padding: 2rem 0;
 }
 
 .retry-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--color-card-bg);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
   padding: 0.5rem 1rem;
   border-radius: 4px;
+  background: var(--color-card-bg-hover);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
   cursor: pointer;
-  transition: all var(--transition-medium);
 }
 
-.retry-btn:hover {
-  background: var(--color-card-bg-hover);
+.empty-message {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 2rem 0;
 }
 
 .empty-state {
@@ -853,6 +1270,11 @@ export default {
   box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.2);
 }
 
+.text-area {
+  resize: vertical;
+  min-height: 80px;
+}
+
 .settings-message {
   padding: 1rem;
   border-radius: 8px;
@@ -949,6 +1371,23 @@ export default {
   color: var(--color-text);
 }
 
+.cancel-btn:hover:not(:disabled) {
+  background: var(--color-border);
+}
+
+.test-btn {
+  background: var(--color-info);
+  color: white;
+  margin: 1rem 0;
+}
+
+.test-modal-button {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+/* Стили для модальных окон */
 .modal {
   position: fixed;
   top: 0;
@@ -958,7 +1397,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2000;
 }
 
 .modal-overlay {
@@ -973,12 +1412,16 @@ export default {
 
 .modal-container {
   width: 90%;
-  max-width: 500px;
+  max-width: 700px;
+  max-height: 90vh;
   background: var(--color-card-bg);
   border-radius: 12px;
-  z-index: 1001;
+  z-index: 2001;
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
   animation: slideUp 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .modal-header {
@@ -1005,6 +1448,8 @@ export default {
 
 .modal-body {
   padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .modal-footer {
@@ -1015,11 +1460,141 @@ export default {
   gap: 1rem;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.save-error-message {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  color: var(--color-danger);
+  background: rgba(var(--color-danger-rgb), 0.1);
+  border-radius: 4px;
+  text-align: center;
 }
 
+/* Стили для просмотра пользователя */
+.user-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.user-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.user-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--color-card-bg-hover);
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-primary);
+  color: white;
+}
+
+.user-basic-info {
+  flex: 1;
+}
+
+.user-basic-info h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+}
+
+.user-email {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-text-secondary);
+}
+
+.user-role {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--color-card-bg-hover);
+  color: var(--color-text);
+}
+
+.admin-role {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+}
+
+.user-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.stat-item {
+  background: var(--color-card-bg-hover);
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+}
+
+.detail-label {
+  width: 120px;
+  min-width: 120px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.detail-value {
+  color: var(--color-text);
+}
+
+.bio-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.bio-section h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.bio-section p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Анимации */
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -1031,11 +1606,17 @@ export default {
   }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
 
+/* Медиа-запросы */
 @media (max-width: 768px) {
   .admin-tabs {
     overflow-x: auto;
@@ -1065,6 +1646,26 @@ export default {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
+  }
+
+  .user-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .user-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .detail-label {
+    width: 100%;
   }
 }
 </style>

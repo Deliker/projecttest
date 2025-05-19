@@ -12,6 +12,7 @@ import auth from './services/auth';
 // Import the TaskAttachments component
 import TaskAttachments from './components/TaskAttachments.vue';
 import AchievementNotification from './components/AchievementsNotification.vue';
+
 // Import components
 import HomePage from './components/HomePage.vue';
 import CalendarPage from './components/CalendarPage.vue';
@@ -20,26 +21,31 @@ import AuthPage from './components/AuthPage.vue';
 import UserProfilePage from './components/UserProfilePage.vue';
 import AdminPanel from "./components/AdminPanel.vue";
 import CategoryManagement from './components/CategoryManagement.vue';
+import UserViewModal from './components/UserViewModal.vue';
+import UserEditModal from './components/UserEditModal.vue';
 
 // Initialize auth service
 auth.init();
+
+// Admin route guard
 const requireAdminAuth = (to, from, next) => {
     if (!auth.isAuthenticated()) {
-        // User not authenticated, redirect to login
         next({
             path: '/auth',
-            query: { redirect: to.fullPath, mode: 'login' }
+            query: {
+                redirect: to.fullPath,
+                mode: 'login'
+            }
         });
-    } else if (!auth.state.user || auth.state.user.role !== 'ADMIN') {
-        // User authenticated but not admin, redirect to home
-        console.log("User not admin, redirecting to home");
+    } else if (!auth.isAdmin()) {
+        // Redirect non-admin users to the home page
         next({ path: '/' });
     } else {
-        // User is admin, proceed
         next();
     }
 };
-// Route guards
+
+// Route guards for authenticated routes
 const requireAuth = (to, from, next) => {
     if (!auth.isAuthenticated()) {
         next({
@@ -90,16 +96,16 @@ const routes = [
         component: AuthPage,
         meta: { title: 'Log In - TaskMaster' }
     },
-    // Catch-all 404 route
-    {
-        path: '/:pathMatch(.*)*',
-        redirect: '/'
-    },
     {
         path: '/admin',
         component: AdminPanel,
         beforeEnter: requireAdminAuth,
         meta: { title: 'Admin Panel - TaskMaster' }
+    },
+    // Catch-all 404 route
+    {
+        path: '/:pathMatch(.*)*',
+        redirect: '/'
     }
 ];
 
@@ -127,7 +133,9 @@ router.afterEach((to) => {
     } else if (to.path === '/achievements') {
         document.title = `${i18n.global.t('nav.achievements')} - ${appName}`;
     } else if (to.path === '/categories') {
-        document.title = `${i18n.global.t('nav.categories')} - ${appName}`;  // Add this line
+        document.title = `${i18n.global.t('nav.categories')} - ${appName}`;
+    } else if (to.path === '/admin') {
+        document.title = `${i18n.global.t('nav.admin')} - ${appName}`;
     } else if (to.path === '/auth') {
         const mode = to.query.mode === 'register' ? i18n.global.t('nav.signup') : i18n.global.t('nav.login');
         document.title = `${mode} - ${appName}`;
@@ -139,10 +147,11 @@ router.afterEach((to) => {
 // Create Vue app
 const app = createApp(App);
 
-// Register TaskAttachments component globally
+// Register components globally
 app.component('TaskAttachments', TaskAttachments);
-
 app.component('AchievementNotification', AchievementNotification);
+app.component('UserViewModal', UserViewModal);
+app.component('UserEditModal', UserEditModal);
 
 // Global properties
 app.config.globalProperties.$auth = auth.state;
