@@ -760,28 +760,6 @@ export default {
   },
 
   methods: {
-    // Debug method for testing achievement notifications
-    triggerTestAchievement() {
-      // Create a test achievement
-      const testAchievement = {
-        id: 'test_achievement_' + Date.now(),
-        title: 'Test Achievement',
-        description: 'This is a test achievement notification',
-        icon: '🏆',
-        points: 50
-      };
-
-      console.log("[CalendarPage] Manually triggering test achievement:", testAchievement);
-
-      // Dispatch achievement-unlocked event
-      const achievementEvent = new CustomEvent('achievement-unlocked', {
-        detail: testAchievement
-      });
-
-      document.dispatchEvent(achievementEvent);
-      console.log("[CalendarPage] Test achievement-unlocked event dispatched");
-    },
-
     // Load tasks for the current month from the backend
     async loadTasksForMonth() {
       this.isLoading = true;
@@ -883,7 +861,6 @@ export default {
         this.isLoading = false;
       }
     },
-
     async loadAllCategories() {
       try {
         const userId = localStorage.getItem('user_id');
@@ -899,7 +876,6 @@ export default {
         console.error('Failed to load custom categories:', error);
       }
     },
-
     // Initialize timer for a task
     initializeTimer(task) {
       if (!task.timeRemaining || task.timeRemaining <= 0) return;
@@ -965,7 +941,6 @@ export default {
         return false;
       }
     },
-
     handleAttachmentAdded(attachment) {
       // Update the attachment count for this task
       const taskId = attachment.taskId;
@@ -981,7 +956,6 @@ export default {
         }
       }
     },
-
     handleAttachmentDeleted(attachment) {
       // Update the attachment count for this task
       const taskId = attachment.taskId;
@@ -994,7 +968,6 @@ export default {
         }
       }
     },
-
     previousMonth() {
       if (this.selectedMonth > 0) {
         this.selectedMonth -= 1;
@@ -1066,8 +1039,7 @@ export default {
     closeTaskListModal() {
       this.showTaskListModal = false;
     },
-
-    // Test methods
+// Test methods
     createTestTask() {
       const taskId = `test_${Date.now()}_${this.testTaskCounter++}`;
       const totalDurationMinutes = parseInt(this.testTaskDuration) || 65;
@@ -1215,7 +1187,6 @@ export default {
       });
       return foundTask;
     },
-
     showTimerApproachingEndNotification(task) {
       const minutesRemaining = Math.ceil(task.timeRemaining / 60);
       this.timerNotificationMessage = `"${task.description}" - ${this.$t('calendar.timer.approaching')} ${minutesRemaining} ${this.$t('calendar.timer.minutesRemaining')}`;
@@ -1244,7 +1215,6 @@ export default {
         this.closeTimerNotification();
       }, 5000);
     },
-
     getCategoryDisplayName(categoryId) {
       if (categoryId.startsWith('custom_')) {
         const customCatId = parseInt(categoryId.replace('custom_', ''));
@@ -1254,7 +1224,6 @@ export default {
         return this.$t(`calendar.categoryNames.${categoryId}`);
       }
     },
-
     openAddTaskForSelectedDay() {
       this.closeTaskListModal();
       this.openTaskModal();
@@ -1813,6 +1782,14 @@ export default {
             delete this.timers[task.id];
           }
 
+          // Check if this task has already been completed
+          if (this.completedTaskIds.has(task.id)) {
+            console.log(`Task ${task.id} already completed, skipping achievement notification`);
+          } else {
+            // Add to completed tasks set
+            this.completedTaskIds.add(task.id);
+          }
+
           // Check if this is a local-only task
           const isLocalTask = task.id.toString().startsWith('local_') || task.isLocalOnly;
 
@@ -1824,6 +1801,7 @@ export default {
               console.log('Task completed successfully on backend, response:', response);
             } catch (apiError) {
               console.error('API error when completing task:', apiError);
+              console.error('Error details:', apiError.response ? apiError.response.data : 'No response data');
               console.log('Continuing with UI update despite API error');
             }
           } else {
@@ -1838,16 +1816,22 @@ export default {
             setTimeout(() => {
               const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
 
-              // IMPORTANT: Clear the completed task list to ensure reliable tracking
-              if (!this.completedTaskIds.has(task.id)) {
-                this.completedTaskIds.add(task.id);
+              // Check cooldown before dispatching achievement event
+              const now = Date.now();
+              const timeSinceLastNotification = now - this.lastAchievementNotificationTime;
+              const cooldownPeriod = 5000; // 5 seconds cooldown
 
-                // Dispatch task-completed event - ALWAYS dispatch regardless of cooldown
+              if (!this.suppressAchievementNotifications && timeSinceLastNotification > cooldownPeriod) {
+                // Dispatch task-completed event
                 const taskCompletedEvent = new CustomEvent('task-completed', {
                   detail: completedTask
                 });
                 document.dispatchEvent(taskCompletedEvent);
-                console.log('task-completed event dispatched for:', completedTask.description);
+
+                // Update the timestamp
+                this.lastAchievementNotificationTime = now;
+              } else {
+                console.log('Achievement notification suppressed due to cooldown');
               }
 
               if (this.tasks[key].length === 0) {
@@ -1863,16 +1847,22 @@ export default {
           } else {
             const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
 
-            // IMPORTANT: Same as above but without the animation timeout
-            if (!this.completedTaskIds.has(task.id)) {
-              this.completedTaskIds.add(task.id);
+            // Same notification cooldown logic as above
+            const now = Date.now();
+            const timeSinceLastNotification = now - this.lastAchievementNotificationTime;
+            const cooldownPeriod = 5000; // 5 seconds cooldown
 
-              // Dispatch task-completed event - ALWAYS dispatch regardless of cooldown
+            if (!this.suppressAchievementNotifications && timeSinceLastNotification > cooldownPeriod) {
+              // Dispatch task-completed event
               const taskCompletedEvent = new CustomEvent('task-completed', {
                 detail: completedTask
               });
               document.dispatchEvent(taskCompletedEvent);
-              console.log('task-completed event dispatched for:', completedTask.description);
+
+              // Update the timestamp
+              this.lastAchievementNotificationTime = now;
+            } else {
+              console.log('Achievement notification suppressed due to cooldown');
             }
 
             if (this.tasks[key].length === 0) {
@@ -1913,7 +1903,6 @@ export default {
         this.showNotification = false;
       }, 3000);
     },
-
     suppressNotifications(duration = 5000) {
       this.suppressAchievementNotifications = true;
 
@@ -2297,97 +2286,105 @@ export default {
       if (dropdown && !dropdown.contains(event.target) && this.showFilterDropdown) {
         this.showFilterDropdown = false;
       }
-    },
+    }
+  },
+  mountedAdditionalHandlers() {
+    // Включение слушателя событий о разблокировке достижений
+    document.addEventListener('achievement-unlocked', (event) => {
+      // Проверка на время с момента последнего уведомления
+      const now = Date.now();
+      const timeSinceLastNotification = now - this.lastAchievementNotificationTime;
+      const cooldownPeriod = 5000; // 5 секунд задержки
 
-    async mounted() {
-      try {
-        console.log("[CalendarPage] Component mounted");
+      if (!this.suppressAchievementNotifications && timeSinceLastNotification > cooldownPeriod) {
+        const achievementData = event.detail;
+        this.notificationMessage = `${achievementData.title} - ${achievementData.description}`;
+        this.showNotification = true;
+        this.notificationProgress = 100;
 
-        // First load from localStorage
-        this.loadTasksFromLocalStorage();
+        if (this.notificationTimer) {
+          clearInterval(this.notificationTimer);
+        }
 
-        // Load custom categories
-        await this.loadAllCategories();
-
-        // Then load tasks from server
-        await this.loadTasksForMonth();
-        this.updateDayAttributes();
-      } catch (error) {
-        console.error('Error initializing calendar page:', error);
-      }
-
-      document.addEventListener('click', this.handleOutsideClick);
-      window.addEventListener('mousemove', this.trackMousePosition);
-      window.addEventListener('mouseup', this.onDragEnd);
-
-      // Use a named function for the task-completed listener that we can remove properly
-      this.taskCompletedHandler = (event) => {
-        console.log("[CalendarPage] Task completed event detected:", event.detail);
-        // Wait a moment to allow the achievement service to process the task
-        setTimeout(() => {
-          if (event.detail && !this.suppressAchievementNotifications) {
-            // Simulate an achievement unlock for testing - uncomment this if needed for testing
-            /*
-            const testAchievement = {
-              id: 'test_achievement_' + Date.now(),
-              title: 'Test Achievement',
-              description: 'This is a test achievement',
-              icon: '🏆',
-              points: 50
-            };
-
-            // Dispatch test achievement event
-            const achievementEvent = new CustomEvent('achievement-unlocked', {
-              detail: testAchievement
-            });
-            document.dispatchEvent(achievementEvent);
-            console.log("[CalendarPage] Test achievement-unlocked event dispatched:", testAchievement);
-            */
-
-            // In a real app, the achievement service should listen for task-completed
-            // and dispatch achievement-unlocked events when appropriate
+        this.notificationTimer = setInterval(() => {
+          this.notificationProgress -= 1;
+          if (this.notificationProgress <= 0) {
+            clearInterval(this.notificationTimer);
+            this.showNotification = false;
           }
-        }, 500);
-      };
+        }, 50);
 
-      // Also listen for task creation events
-      this.taskCreatedHandler = (event) => {
-        console.log("[CalendarPage] Task created event detected:", event.detail);
-        // Similar processing as above if needed
-      };
+        setTimeout(() => {
+          clearInterval(this.notificationTimer);
+          this.showNotification = false;
+        }, 5000);
 
-      // Add event listeners with our named handlers
-      document.addEventListener('task-completed', this.taskCompletedHandler);
-      document.addEventListener('task-created', this.taskCreatedHandler);
-    },
-
-    beforeUnmount() {
-      console.log("[CalendarPage] Component will unmount");
-
-      // Remove event listeners
-      document.removeEventListener('click', this.handleOutsideClick);
-      window.removeEventListener('mousemove', this.trackMousePosition);
-      window.removeEventListener('mouseup', this.onDragEnd);
-
-      // Remove our named event handlers
-      if (this.taskCompletedHandler) {
-        document.removeEventListener('task-completed', this.taskCompletedHandler);
+        // Обновить временную метку последнего уведомления
+        this.lastAchievementNotificationTime = now;
+      } else {
+        console.log('Achievement notification skipped due to cooldown');
       }
+    });
+  },
+  async mounted() {
+    try {
+      // First load from localStorage
+      this.loadTasksFromLocalStorage();
 
-      if (this.taskCreatedHandler) {
-        document.removeEventListener('task-created', this.taskCreatedHandler);
-      }
+      // Load custom categories
+      await this.loadAllCategories();
 
-      // Clear all active timers
-      Object.keys(this.timers).forEach(timerId => {
-        clearInterval(this.timers[timerId]);
-      });
-      this.timers = {};
-      this.notifiedTimers.clear();
+      // Then load tasks from server
+      await this.loadTasksForMonth();
+      this.updateDayAttributes();
+    } catch (error) {
+      console.error('Error initializing calendar page:', error);
+    }
+
+    document.addEventListener('click', this.handleOutsideClick);
+    window.addEventListener('mousemove', this.trackMousePosition);
+    window.addEventListener('mouseup', this.onDragEnd);
+
+    // Listen for achievement-unlocked events
+    document.addEventListener('achievement-unlocked', (event) => {
+      const achievementData = event.detail;
+      this.notificationMessage = `${achievementData.title} - ${achievementData.description}`;
+      this.showNotification = true;
+      this.notificationProgress = 100;
 
       if (this.notificationTimer) {
         clearInterval(this.notificationTimer);
       }
+
+      this.notificationTimer = setInterval(() => {
+        this.notificationProgress -= 1;
+        if (this.notificationProgress <= 0) {
+          clearInterval(this.notificationTimer);
+          this.showNotification = false;
+        }
+      }, 50);
+
+      setTimeout(() => {
+        clearInterval(this.notificationTimer);
+        this.showNotification = false;
+      }, 5000);
+    });
+  },
+
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleOutsideClick);
+    window.removeEventListener('mousemove', this.trackMousePosition);
+    window.removeEventListener('mouseup', this.onDragEnd);
+
+    // Clear all active timers
+    Object.keys(this.timers).forEach(timerId => {
+      clearInterval(this.timers[timerId]);
+    });
+    this.timers = {};
+    this.notifiedTimers.clear();
+
+    if (this.notificationTimer) {
+      clearInterval(this.notificationTimer);
     }
   }
 };
