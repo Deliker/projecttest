@@ -161,6 +161,9 @@
       <router-view></router-view>
     </div>
 
+    <!-- Achievement notification component -->
+    <AchievementNotification />
+
     <transition name="achievement-slide">
       <div v-if="showAchievementNotification" class="achievement-notification">
         <div class="achievement-content">
@@ -177,7 +180,6 @@
         </div>
         <div class="achievement-progress">
           <div class="progress-bar" :style="{ width: notificationProgress + '%' }"></div>
-          <AchievementNotification />o
         </div>
       </div>
     </transition>

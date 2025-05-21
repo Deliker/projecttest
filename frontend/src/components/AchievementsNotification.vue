@@ -40,17 +40,27 @@ export default {
     };
   },
   mounted() {
-    // Clear any existing listeners to avoid duplicates
-    document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
+    console.log('🏆 AchievementNotification component mounted');
 
-    // Set up a single listener
-    document.addEventListener('achievement-unlocked', this.handleAchievementUnlocked);
+    // Set a global flag to track that the listener is registered to prevent duplicates
+    if (!window.achievementListenerRegistered) {
+      // Remove any existing listeners first to prevent duplicates
+      document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
 
-    console.log('🏆 Achievement notification listener registered');
+      // Add the listener
+      document.addEventListener('achievement-unlocked', this.handleAchievementUnlocked);
+
+      // Set the flag
+      window.achievementListenerRegistered = true;
+
+      console.log('🏆 Achievement notification listener registered');
+    }
 
     this.isMounted = true;
   },
   beforeUnmount() {
+    console.log('🏆 AchievementNotification component will unmount');
+
     // Only remove event listener if this is the original instance that added it
     if (this.isMounted && window.achievementListenerRegistered) {
       document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
@@ -65,12 +75,15 @@ export default {
   },
   methods: {
     handleAchievementUnlocked(event) {
-      // Handle null or invalid event data
+      // Be extra careful with event handling
       if (!event || !event.detail) {
         console.warn('Invalid achievement unlock event:', event);
         return;
       }
 
+      console.log('🏆 Achievement unlocked event received:', event.detail);
+
+      // Get the achievement ID from the event detail
       const achievementId = event.detail.id || '';
 
       // Prevent duplicate notifications for the same achievement in a short time period
@@ -78,8 +91,6 @@ export default {
         console.log(`Skipping duplicate notification for achievement: ${achievementId}`);
         return;
       }
-
-      console.log(`Showing notification for achievement: ${achievementId}`);
 
       // Set notification data
       this.notification = {
@@ -93,13 +104,14 @@ export default {
       // Add to recently shown achievements
       this.recentlyShownAchievements.add(achievementId);
 
-      // Auto-clear from recently shown after 10 seconds to prevent memory buildup
+      // Set a timeout to remove from recently shown
       setTimeout(() => {
         this.recentlyShownAchievements.delete(achievementId);
       }, 10000);
 
       // Show notification
       this.isVisible = true;
+      console.log('🏆 Showing achievement notification:', this.notification);
 
       // Play a sound effect if available
       this.playUnlockSound();

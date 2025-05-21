@@ -10,13 +10,20 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    bio TEXT,
+    avatar_url VARCHAR(255),
+    theme VARCHAR(50) DEFAULT 'dark',
+    last_active TIMESTAMP NULL,
+    location VARCHAR(255),
+    job_title VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    );
 
 -- Create tasks table
 CREATE TABLE IF NOT EXISTS tasks (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    description VARCHAR(255) NOT NULL,
+                                     id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                     description VARCHAR(255) NOT NULL,
     category VARCHAR(50) NOT NULL,
     priority VARCHAR(20) NOT NULL,
     year INT NOT NULL,
@@ -28,7 +35,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     completed_at TIMESTAMP NULL,
     user_id BIGINT,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+    );
 
 -- Create achievements table
 CREATE TABLE IF NOT EXISTS achievements (
@@ -43,21 +50,28 @@ CREATE TABLE IF NOT EXISTS achievements (
     user_id BIGINT,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY user_achievement (user_id, achievement_id)
-);
+    );
 
--- Insert a test user (password is 'password' encrypted with BCrypt)
-INSERT INTO users (name, email, password) VALUES 
-('Test User', 'test@example.com', '$2a$10$aCvAGxXhYSMmXs7yN2gP0.Tln5UBUbj56AYxgzrKa/AuWnf5zTXeS');
+-- Create custom_categories table
+CREATE TABLE IF NOT EXISTS custom_categories (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    color VARCHAR(50) NOT NULL,
+    user_id BIGINT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY user_category_name (user_id, name)
+    );
 
--- Insert some test tasks for this user
-INSERT INTO tasks (description, category, priority, year, month, day, duration, user_id) VALUES
-('Complete project proposal', 'work', 'high', 2025, 3, 20, 120, 1),
-('Go for a run', 'health', 'medium', 2025, 3, 20, 45, 1),
-('Buy groceries', 'shopping', 'low', 2025, 3, 21, 60, 1),
-('Prepare presentation', 'work', 'high', 2025, 3, 22, 90, 1),
-('Call parents', 'personal', 'medium', 2025, 3, 23, 30, 1);
-
--- Insert some achievements for this user
-INSERT INTO achievements (achievement_id, title, description, icon, points, category, user_id) VALUES
-('beginner', 'First Step', 'Complete your first task', '🎯', 10, 'daily', 1),
-('multitasker', 'Multitasker', 'Complete tasks in 5 different categories', '🎭', 50, 'special', 1);
+-- Create attachments table
+CREATE TABLE IF NOT EXISTS attachments (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    file_size BIGINT,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    task_id BIGINT,
+    user_id BIGINT,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
