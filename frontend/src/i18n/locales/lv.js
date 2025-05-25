@@ -11,7 +11,8 @@ export default {
         login: 'Pieslēgties',
         signup: 'Reģistrēties',
         logout: 'Iziet',
-        profile: 'Profils'
+        profile: 'Profils',
+        admin: 'Admin Panelis'
     },
 
     // Home Page

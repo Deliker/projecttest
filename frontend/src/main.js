@@ -153,8 +153,8 @@ app.component('AchievementNotification', AchievementNotification);
 app.component('UserViewModal', UserViewModal);
 app.component('UserEditModal', UserEditModal);
 
-// Global properties
-app.config.globalProperties.$auth = auth.state;
+// Global properties - передаем весь auth объект
+app.config.globalProperties.$auth = auth;
 
 // Use i18n
 app.use(i18n);

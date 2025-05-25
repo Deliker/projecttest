@@ -1,15 +1,19 @@
+import { reactive } from 'vue';
 import apiService from './api';
 
+// Создаем реактивное состояние с той же структурой, что была изначально
+const state = reactive({
+  isAuthenticated: false,
+  user: null,
+  userId: null,
+  token: null,
+  loading: false,
+  error: null
+});
+
 export default {
-  // Current authentication state
-  state: {
-    isAuthenticated: false,
-    user: null,
-    userId: null,
-    token: null,
-    loading: false,
-    error: null
-  },
+  // Current authentication state - возвращаем реактивное состояние
+  state,
 
   // Initialize auth state from localStorage
   init() {
@@ -19,12 +23,12 @@ export default {
 
     if (token && user && userId) {
       try {
-        this.state.token = token;
-        this.state.user = JSON.parse(user);
-        this.state.userId = parseInt(userId);
-        this.state.isAuthenticated = true;
-        console.log("Auth initialized with user:", this.state.user);
-        console.log("User role:", this.state.user?.role);
+        state.token = token;
+        state.user = JSON.parse(user);
+        state.userId = parseInt(userId);
+        state.isAuthenticated = true;
+        console.log("Auth initialized with user:", state.user);
+        console.log("User role:", state.user?.role);
       } catch (e) {
         console.error('Error parsing stored user data', e);
         this.logout();
@@ -34,15 +38,15 @@ export default {
 
   // Check if current user has admin role
   isAdmin() {
-    console.log("Checking admin status, current user:", this.state.user);
+    console.log("Checking admin status, current user:", state.user);
 
-    if (!this.state.user) {
+    if (!state.user) {
       console.log("No user is logged in");
       return false;
     }
 
     // Check role in different formats since it might be stored differently
-    const role = this.state.user.role;
+    const role = state.user.role;
     console.log("User role:", role, "Type:", typeof role);
 
     if (typeof role === 'string') {
@@ -61,8 +65,8 @@ export default {
 
   // Register a new user
   async register(name, email, password) {
-    this.state.loading = true;
-    this.state.error = null;
+    state.loading = true;
+    state.error = null;
 
     try {
       await apiService.register({ name, email, password });
@@ -70,16 +74,16 @@ export default {
       // Automatically log in after successful registration
       return this.login(email, password);
     } catch (error) {
-      this.state.error = error.response?.data?.error || 'Registration failed';
-      this.state.loading = false;
+      state.error = error.response?.data?.error || 'Registration failed';
+      state.loading = false;
       throw error;
     }
   },
 
   // Login user
   async login(email, password) {
-    this.state.loading = true;
-    this.state.error = null;
+    state.loading = true;
+    state.error = null;
 
     try {
       const response = await apiService.login({ email, password });
@@ -90,29 +94,29 @@ export default {
       console.log("Login response:", response.data);
 
       // Store auth data including role
-      this.state.isAuthenticated = true;
-      this.state.user = {
+      state.isAuthenticated = true;
+      state.user = {
         id,
         name,
         email: userEmail,
         role
       };
-      this.state.userId = id;
-      this.state.token = token;
+      state.userId = id;
+      state.token = token;
 
       // Persist to localStorage
       localStorage.setItem('auth_token', token);
-      localStorage.setItem('user', JSON.stringify(this.state.user));
+      localStorage.setItem('user', JSON.stringify(state.user));
       localStorage.setItem('user_id', id);
 
-      console.log("User stored after login:", this.state.user);
+      console.log("User stored after login:", state.user);
       console.log("Is admin after login?", this.isAdmin());
 
-      this.state.loading = false;
+      state.loading = false;
       return response.data;
     } catch (error) {
-      this.state.error = error.response?.data?.error || 'Login failed';
-      this.state.loading = false;
+      state.error = error.response?.data?.error || 'Login failed';
+      state.loading = false;
       throw error;
     }
   },
@@ -120,35 +124,41 @@ export default {
   // Logout user
   logout() {
     // Clear state
-    this.state.isAuthenticated = false;
-    this.state.user = null;
-    this.state.userId = null;
-    this.state.token = null;
+    state.isAuthenticated = false;
+    state.user = null;
+    state.userId = null;
+    state.token = null;
+    state.loading = false;
+    state.error = null;
+
     document.dispatchEvent(new Event('user-logged-out'));
+
     // Clear localStorage
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
     localStorage.removeItem('user_id');
+
+    console.log("User logged out, state cleared");
   },
 
   // Get user profile data
   async getUserProfile() {
-    if (!this.state.isAuthenticated || !this.state.userId) {
+    if (!state.isAuthenticated || !state.userId) {
       throw new Error('User not authenticated');
     }
 
     try {
-      const response = await apiService.getUserInfo(this.state.userId);
+      const response = await apiService.getUserInfo(state.userId);
       console.log("Profile response:", response.data);
 
       // If the profile response includes role information, update it
       if (response.data && response.data.role) {
-        this.state.user = {
-          ...this.state.user,
+        state.user = {
+          ...state.user,
           role: response.data.role
         };
-        localStorage.setItem('user', JSON.stringify(this.state.user));
-        console.log("Updated user role:", this.state.user.role);
+        localStorage.setItem('user', JSON.stringify(state.user));
+        console.log("Updated user role:", state.user.role);
         console.log("Is admin after profile update?", this.isAdmin());
       }
 
@@ -161,16 +171,16 @@ export default {
 
   // Check if user is authenticated
   isAuthenticated() {
-    return this.state.isAuthenticated;
+    return state.isAuthenticated;
   },
 
   // Get current user
   getCurrentUser() {
-    return this.state.user;
+    return state.user;
   },
 
   // Get user ID
   getUserId() {
-    return this.state.userId;
+    return state.userId;
   }
 };

@@ -11,7 +11,8 @@ export default {
         signup: 'Sign Up',
         logout: 'Logout',
         profile: 'Profile',
-        categories: 'Categories'
+        categories: 'Categories',
+        admin: 'Admin Panel'
     },
 
 

@@ -47,21 +47,10 @@
             </svg>
             <span>{{ $t('nav.achievements') }}</span>
           </router-link>
+
+          <!-- Admin Panel Link - используем простую проверку как было изначально -->
           <router-link
-              v-if="isUserAuthenticated && $auth.user && $auth.user.role === 'ADMIN'"
-              to="/admin"
-              class="nav-item"
-              @click="closeMobileNav"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="nav-icon">
-              <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M12 8V8.01" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M12 12V16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>Admin Panel</span>
-          </router-link>
-          <router-link
-              v-if="$auth.isAdmin"
+              v-if="isUserAuthenticated && isAdmin"
               to="/admin"
               class="nav-item"
               @click="closeMobileNav"
@@ -72,6 +61,7 @@
             </svg>
             <span>{{ $t('nav.admin') }}</span>
           </router-link>
+
           <!-- Theme toggle button -->
           <div class="theme-toggle-container">
             <button @click="toggleTheme" class="theme-toggle" aria-label="Toggle theme">
@@ -214,13 +204,16 @@ export default {
       return this.i18n.locale.value;
     },
     isUserAuthenticated() {
-      return this.$auth.isAuthenticated;
+      // Теперь используем реактивное состояние
+      return this.$auth.state.isAuthenticated;
     },
     currentUserName() {
-      return this.$auth.user?.name || '';
+      // Теперь используем реактивное состояние
+      return this.$auth.state.user?.name || '';
     },
     isAdmin() {
-      return this.$auth.user?.role === 'ADMIN';
+      // Простая проверка роли как было изначально
+      return this.$auth.state.user?.role === 'ADMIN';
     }
   },
   watch: {
@@ -242,9 +235,9 @@ export default {
 
     if (token && user) {
       try {
-        this.$auth.token = token;
-        this.$auth.user = JSON.parse(user);
-        this.$auth.isAuthenticated = true;
+        this.$auth.state.token = token;
+        this.$auth.state.user = JSON.parse(user);
+        this.$auth.state.isAuthenticated = true;
       } catch (e) {
         // If there's an error parsing, reset auth state
         localStorage.removeItem('auth_token');
@@ -287,11 +280,7 @@ export default {
       this.isLightTheme = !this.isLightTheme;
     },
     logout() {
-      this.$auth.isAuthenticated = false;
-      this.$auth.user = null;
-      this.$auth.token = null;
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
+      this.$auth.logout();
       this.$router.push('/auth');
     },
     toggleLanguageDropdown(event) {

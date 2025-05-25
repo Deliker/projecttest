@@ -11,7 +11,8 @@ export default {
         signup: 'Регистрация',
         logout: 'Выход',
         profile: 'Профиль',
-        categories: 'Категории'
+        categories: 'Категории',
+        admin: 'Админ Панель'
     },
 
     // Home Page
