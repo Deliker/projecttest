@@ -1008,11 +1008,13 @@ export default {
 .profile-title {
   font-size: 2.5rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  margin-right: 1.5rem;
   background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: fadeInUp 0.6s ease-out;
+  letter-spacing: 0.02em;
 }
 
 .profile-subtitle {

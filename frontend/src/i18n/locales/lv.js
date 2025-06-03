@@ -105,19 +105,66 @@ export default {
         },
         achievements: {
             unlocked: 'Sasniegums atbloķēts!',
-            beginner: 'Pirmais solis (Pabeidziet savu pirmo uzdevumu)',
-            productiveDay: 'Produktīva diena (Pabeidziet 5 uzdevumus vienā dienā)',
-            earlyBird: 'Agrais putns (Pabeidziet uzdevumu pirms plkst. 6:00)',
-            nightOwl: 'Nakts pūce (Pabeidziet uzdevumu pēc pusnakts)',
-            goalOriented: 'Mērķtiecīgs (Pabeidziet 10 uzdevumus nedēļā)',
-            weekendWarrior: 'Brīvdienu karotājs (Pabeidziet 5 uzdevumus nedēļas nogalē)',
-            perfectWeek: 'Ideāla nedēļa (Pabeidziet vismaz 1 uzdevumu katru nedēļas dienu)',
-            projectLeader: 'Projekta vadītājs (Pabeidziet visus mēneša uzdevumus)',
-            timeMaster: 'Laika meistars (Pabeidziet 50 uzdevumus)',
-            consistency: 'Konsekvences karalis (Pabeidziet uzdevumus 30 dienas pēc kārtas)',
-            earlyPlanner: 'Agrais plānotājs (Plānojiet uzdevumus nedēļu uz priekšu)',
-            speedRunner: 'Ātrskrējējs (Pabeidziet 3 uzdevumus stundas laikā)',
-            multitasker: 'Daudzuzdevumu veicējs (Pabeidziet uzdevumus 5 dažādās kategorijās)'
+
+            beginner: 'Pirmais solis',
+            beginnerDesc: 'Pabeidziet savu pirmo uzdevumu',
+
+            productiveDay: 'Produktīva diena',
+            productiveDayDesc: 'Pabeidziet 5 uzdevumus vienā dienā',
+
+            superProductiveDay: 'Super Produktīva Diena',
+            superProductiveDayDesc: 'Pabeidziet 10 uzdevumus vienā dienā',
+
+            earlyBird: 'Agrais putns',
+            earlyBirdDesc: 'Pabeidziet uzdevumu pirms plkst. 6:00',
+
+            nightOwl: 'Nakts pūce',
+            nightOwlDesc: 'Pabeidziet uzdevumu pēc pusnakts',
+
+            goalOriented: 'Mērķtiecīgs',
+            goalOrientedDesc: 'Pabeidziet 10 uzdevumus nedēļā',
+
+            weekendWarrior: 'Brīvdienu karotājs',
+            weekendWarriorDesc: 'Pabeidziet 5 uzdevumus nedēļas nogalē',
+
+            perfectWeek: 'Ideāla nedēļa',
+            perfectWeekDesc: 'Pabeidziet vismaz 1 uzdevumu katru nedēļas dienu',
+
+            projectLeader: 'Projekta vadītājs',
+            projectLeaderDesc: 'Pabeidziet visus mēneša uzdevumus',
+
+            timeMaster: 'Laika meistars',
+            timeMasterDesc: 'Pabeidziet 50 uzdevumus',
+
+            consistency: 'Konsekvences karalis',
+            consistencyDesc: 'Pabeidziet uzdevumus 30 dienas pēc kārtas',
+
+            earlyPlanner: 'Agrais plānotājs',
+            earlyPlannerDesc: 'Plānojiet uzdevumus nedēļu uz priekšu',
+
+            speedRunner: 'Ātrskrējējs',
+            speedRunnerDesc: 'Pabeidziet 3 uzdevumus stundas laikā',
+
+            multitasker: 'Daudzuzdevumu veicējs',
+            multitaskerDesc: 'Pabeidziet uzdevumus 5 dažādās kategorijās',
+
+            taskMaster: 'Uzdevumu meistars',
+            taskMasterDesc: 'Pabeidziet 100 uzdevumus kopā',
+
+            ultraProductive: 'Ultra produktīvs',
+            ultraProductiveDesc: 'Pabeidziet 15 uzdevumus vienā dienā',
+
+            organized: 'Organizēts',
+            organizedDesc: 'Izmantojiet visas pieejamās kategorijas',
+
+            marathoner: 'Maratonists',
+            marathonerDesc: 'Pabeidziet uzdevumus 100 dienas pēc kārtas',
+
+            earlyRiser: 'Agrais cēlējs',
+            earlyRiserDesc: 'Pabeidziet 10 uzdevumus pirms plkst. 8:00',
+
+            workaholic: 'Darba atkarīgais',
+            workaholicDesc: 'Pabeidziet 20 darba uzdevumus nedēļā'
         },
         timer: {
             expired: 'Taimeris beidzies',
@@ -294,8 +341,23 @@ export default {
             role: 'Loma',
             lastActive: 'Pēdējā aktivitāte',
             actions: 'Darbības',
+            loading: 'Ielādē lietotāja datus...',
+            saving: 'Saglabā...',
+            never: 'Nekad',
+            viewUser: 'Skatīt lietotāju',
+            editUser: 'Rediģēt lietotāju',
+            userNotFound: 'Lietotājs nav atrasts',
             confirmDelete: 'Apstiprināt lietotāja dzēšanu',
-            deleteWarning: 'Šo darbību nevar atsaukt. Tas neatgriezeniski dzēsīs lietotāja kontu un visus saistītos datus.'
+            deleteWarning: 'Šo darbību nevar atsaukt. Tas neatgriezeniski dzēsīs lietotāja kontu un visus saistītos datus.',
+            totalTasks: 'Kopējie uzdevumi',
+            completedTasks: 'Pabeigtie uzdevumi',
+            achievements: 'Sasniegumi',
+            jobTitle: 'Amats',
+            location: 'Atrašanās vieta',
+            theme: 'Tēma',
+            bio: 'Biogrāfija',
+            darkTheme: 'Tumšā tēma',
+            lightTheme: 'Gaišā tēma'
         },
         roles: {
             user: 'Lietotājs',
@@ -306,7 +368,10 @@ export default {
             edit: 'Rediģēt',
             delete: 'Dzēst',
             confirm: 'Apstiprināt',
-            cancel: 'Atcelt'
+            cancel: 'Atcelt',
+            close: 'Aizvērt',
+            save: 'Saglabāt',
+            retry: 'Mēģināt vēlreiz'
         },
         dashboard: {
             title: 'Panelis',
@@ -320,10 +385,22 @@ export default {
             appName: 'Lietotnes nosaukums',
             defaultLanguage: 'Noklusējuma valoda',
             enableRegistration: 'Iespējot reģistrāciju',
-            saveSettings: 'Saglabāt iestatījumus'
+            saveSettings: 'Saglabāt iestatījumus',
+            saveSuccess: 'Iestatījumi veiksmīgi saglabāti!',
+            saveError: 'Neizdevās saglabāt iestatījumus. Lūdzu, mēģiniet vēlreiz.'
         },
         errors: {
-            loadUsers: 'Neizdevās ielādēt lietotājus. Lūdzu, mēģiniet vēlreiz.'
+            loadUsers: 'Neizdevās ielādēt lietotājus. Lūdzu, mēģiniet vēlreiz.',
+            loadStats: 'Neizdevās ielādēt statistiku. Lūdzu, mēģiniet vēlreiz.',
+            loadUserDetails: 'Neizdevās ielādēt lietotāja datus. Lūdzu, mēģiniet vēlreiz.',
+            saveUser: 'Neizdevās saglabāt lietotāja izmaiņas. Lūdzu, mēģiniet vēlreiz.'
+        },
+        notifications: {
+            userUpdated: 'Lietotājs veiksmīgi atjaunināts!',
+            userDeleted: 'Lietotājs veiksmīgi dzēsts!',
+            userDeleteFailed: 'Neizdevās dzēst lietotāju. Lūdzu, mēģiniet vēlreiz.',
+            roleUpdated: 'Lietotāja loma veiksmīgi atjaunināta!',
+            roleUpdateFailed: 'Neizdevās atjaunināt lietotāja lomu. Lūdzu, mēģiniet vēlreiz.'
         }
     },
 

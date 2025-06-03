@@ -105,19 +105,66 @@ export default {
         },
         achievements: {
             unlocked: 'Достижение разблокировано!',
-            beginner: 'Первый шаг (Выполните свою первую задачу)',
-            productiveDay: 'Продуктивный день (Выполните 5 задач за один день)',
-            earlyBird: 'Ранняя птичка (Выполните задачу до 6 утра)',
-            nightOwl: 'Ночная сова (Выполните задачу после полуночи)',
-            goalOriented: 'Целеустремленность (Выполните 10 задач за неделю)',
-            weekendWarrior: 'Выходной воин (Выполните 5 задач в выходные)',
-            perfectWeek: 'Идеальная неделя (Выполняйте хотя бы 1 задачу каждый день недели)',
-            projectLeader: 'Руководитель проекта (Выполните все задачи за месяц)',
-            timeMaster: 'Мастер времени (Выполните 50 задач)',
-            consistency: 'Король постоянства (Выполняйте задачи 30 дней подряд)',
-            earlyPlanner: 'Планировщик (Спланируйте задачи на неделю вперед)',
-            speedRunner: 'Скоростной бегун (Выполните 3 задачи за час)',
-            multitasker: 'Многозадачность (Выполните задачи в 5 разных категориях)'
+
+            beginner: 'Первый шаг',
+            beginnerDesc: 'Выполните свою первую задачу',
+
+            productiveDay: 'Продуктивный день',
+            productiveDayDesc: 'Выполните 5 задач за один день',
+
+            superProductiveDay: 'Супер продуктивный день',
+            superProductiveDayDesc: 'Выполните 10 задач за один день',
+
+            earlyBird: 'Ранняя птичка',
+            earlyBirdDesc: 'Выполните задачу до 6 утра',
+
+            nightOwl: 'Ночная сова',
+            nightOwlDesc: 'Выполните задачу после полуночи',
+
+            goalOriented: 'Целеустремленность',
+            goalOrientedDesc: 'Выполните 10 задач за неделю',
+
+            weekendWarrior: 'Выходной воин',
+            weekendWarriorDesc: 'Выполните 5 задач в выходные',
+
+            perfectWeek: 'Идеальная неделя',
+            perfectWeekDesc: 'Выполняйте хотя бы 1 задачу каждый день недели',
+
+            projectLeader: 'Руководитель проекта',
+            projectLeaderDesc: 'Выполните все задачи за месяц',
+
+            timeMaster: 'Мастер времени',
+            timeMasterDesc: 'Выполните 50 задач',
+
+            consistency: 'Король постоянства',
+            consistencyDesc: 'Выполняйте задачи 30 дней подряд',
+
+            earlyPlanner: 'Планировщик',
+            earlyPlannerDesc: 'Спланируйте задачи на неделю вперед',
+
+            speedRunner: 'Скоростной бегун',
+            speedRunnerDesc: 'Выполните 3 задачи за час',
+
+            multitasker: 'Многозадачность',
+            multitaskerDesc: 'Выполните задачи в 5 разных категориях',
+
+            taskMaster: 'Мастер задач',
+            taskMasterDesc: 'Выполните 100 задач всего',
+
+            ultraProductive: 'Ультра продуктивный',
+            ultraProductiveDesc: 'Выполните 15 задач за один день',
+
+            organized: 'Организованный',
+            organizedDesc: 'Используйте все доступные категории',
+
+            marathoner: 'Марафонец',
+            marathonerDesc: 'Выполняйте задачи 100 дней подряд',
+
+            earlyRiser: 'Ранний пташка',
+            earlyRiserDesc: 'Выполните 10 задач до 8 утра',
+
+            workaholic: 'Трудоголик',
+            workaholicDesc: 'Выполните 20 рабочих задач за неделю'
         },
         timer: {
             expired: 'Таймер истек',
@@ -165,7 +212,98 @@ export default {
             message: 'Не удалось загрузить достижения. Пожалуйста, попробуйте еще раз.',
             retry: 'Повторить'
         },
-        confirmReset: 'Вы уверены, что хотите сбросить все достижения? Это действие нельзя отменить.'
+        confirmReset: 'Вы уверены, что хотите сбросить все достижения? Это действие нельзя отменить.',
+
+        // Daily Achievements
+        daily: {
+            firstTask: 'Первая задача',
+            earlyStart: 'Ранний старт',
+            nightProductivity: 'Ночная продуктивность',
+            taskStreak: 'Серия задач',
+            focusedWork: 'Сосредоточенная работа'
+        },
+
+        // Weekly Achievements
+        weekly: {
+            productiveWeek: 'Продуктивная неделя',
+            categoryMaster: 'Мастер категорий',
+            weekendProductivity: 'Продуктивность выходных',
+            planningAhead: 'Планирование наперед',
+            completionRate: 'Высокий процент выполнения'
+        },
+
+        // Monthly Achievements
+        monthly: {
+            monthlyGoal: 'Месячная цель',
+            consistencyMaster: 'Мастер постоянства',
+            categoryExplorer: 'Исследователь категорий',
+            timeOptimizer: 'Оптимизатор времени',
+            productivityChampion: 'Чемпион продуктивности'
+        },
+
+        // Special Achievements
+        special: {
+            speedster: 'Скоростник',
+            perfectionist: 'Перфекционист',
+            earlyAdopter: 'Ранний последователь',
+            taskMaster: 'Мастер задач',
+            dedication: 'Преданность'
+        },
+
+        // Achievement Descriptions
+        descriptions: {
+            beginner: 'Выполните свою первую задачу',
+            productiveDay: 'Выполните 5 задач за один день',
+            earlyBird: 'Выполните задачу до 6 утра',
+            nightOwl: 'Выполните задачу после полуночи',
+            goalOriented: 'Выполните 10 задач за неделю',
+            weekendWarrior: 'Выполните 5 задач в выходные',
+            perfectWeek: 'Выполняйте хотя бы 1 задачу каждый день недели',
+            projectLeader: 'Выполните все задачи за месяц',
+            timeMaster: 'Выполните 50 задач',
+            consistency: 'Выполняйте задачи 30 дней подряд',
+            earlyPlanner: 'Спланируйте задачи на неделю вперед',
+            speedRunner: 'Выполните 3 задачи за час',
+            multitasker: 'Выполните задачи в 5 разных категориях',
+
+            // Daily achievement descriptions
+            firstTask: 'Выполните первую задачу дня',
+            earlyStart: 'Начните работать до 7 утра',
+            nightProductivity: 'Будьте продуктивны после 22:00',
+            taskStreak: 'Выполняйте задачи 7 дней подряд',
+            focusedWork: 'Выполните 3 задачи без перерыва',
+
+            // Weekly achievement descriptions
+            productiveWeek: 'Выполните 20 задач за неделю',
+            categoryMaster: 'Выполните задачи во всех категориях',
+            weekendProductivity: 'Оставайтесь продуктивными в выходные',
+            planningAhead: 'Спланируйте всю неделю заранее',
+            completionRate: 'Достигните 90% выполнения задач',
+
+            // Monthly achievement descriptions
+            monthlyGoal: 'Выполните 100 задач за месяц',
+            consistencyMaster: 'Поддерживайте ежедневную продуктивность месяц',
+            categoryExplorer: 'Используйте все доступные категории задач',
+            timeOptimizer: 'Выполняйте задачи раньше срока',
+            productivityChampion: 'Станьте мастером продуктивности',
+
+            // Special achievement descriptions
+            speedster: 'Выполняйте задачи в рекордные сроки',
+            perfectionist: 'Выполните все задачи без задержек',
+            earlyAdopter: 'Будьте среди первых, кто использует новые функции',
+            taskMaster: 'Овладейте искусством управления задачами',
+            dedication: 'Проявите непоколебимую приверженность продуктивности'
+        },
+
+        // Debug Panel
+        debug: {
+            title: 'Панель отладки',
+            unlockRandom: 'Разблокировать случайное достижение',
+            resetAll: 'Сбросить все достижения',
+            status: 'Статус достижений',
+            show: 'Показать панель отладки',
+            hide: 'Скрыть панель отладки'
+        }
     },
 
     // Auth Page

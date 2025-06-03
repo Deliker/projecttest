@@ -28,7 +28,6 @@
             <span>{{ $t('nav.calendar') }}</span>
           </router-link>
 
-          <!-- New Categories Link -->
           <router-link to="/categories" class="nav-item" @click="closeMobileNav">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="nav-icon">
               <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -48,7 +47,6 @@
             <span>{{ $t('nav.achievements') }}</span>
           </router-link>
 
-          <!-- Admin Panel Link - используем простую проверку как было изначально -->
           <router-link
               v-if="isUserAuthenticated && isAdmin"
               to="/admin"
@@ -153,28 +151,9 @@
 
     <!-- Achievement notification component -->
     <AchievementNotification />
-
-    <transition name="achievement-slide">
-      <div v-if="showAchievementNotification" class="achievement-notification">
-        <div class="achievement-content">
-          <div class="achievement-icon">🏆</div>
-          <div class="achievement-text">
-            <h4>{{ $t('calendar.achievements.unlocked') }}</h4>
-            <p>{{ achievementMessage }}</p>
-          </div>
-          <button @click="closeAchievementNotification" class="achievement-close" aria-label="Close notification">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
-        <div class="achievement-progress">
-          <div class="progress-bar" :style="{ width: notificationProgress + '%' }"></div>
-        </div>
-      </div>
-    </transition>
   </div>
 </template>
+
 <script>
 import { useI18n } from 'vue-i18n';
 
@@ -185,10 +164,6 @@ export default {
   },
   data() {
     return {
-      showAchievementNotification: false,
-      achievementMessage: '',
-      notificationProgress: 100,
-      notificationTimer: null,
       mobileNavOpen: false,
       isLightTheme: localStorage.getItem('theme') === 'light',
       showLanguageDropdown: false,
@@ -204,15 +179,12 @@ export default {
       return this.i18n.locale.value;
     },
     isUserAuthenticated() {
-      // Теперь используем реактивное состояние
       return this.$auth.state.isAuthenticated;
     },
     currentUserName() {
-      // Теперь используем реактивное состояние
       return this.$auth.state.user?.name || '';
     },
     isAdmin() {
-      // Простая проверка роли как было изначально
       return this.$auth.state.user?.role === 'ADMIN';
     }
   },
@@ -247,18 +219,9 @@ export default {
 
     // Close language menu when clicking outside of it
     document.addEventListener('click', this.handleOutsideClick);
-
-    // Listen for achievement unlocked events
-    document.addEventListener('achievement-unlocked', this.handleAchievementUnlocked);
   },
   beforeUnmount() {
-    if (this.notificationTimer) {
-      clearInterval(this.notificationTimer);
-    }
     document.removeEventListener('click', this.handleOutsideClick);
-
-    // Remove achievement event listener
-    document.removeEventListener('achievement-unlocked', this.handleAchievementUnlocked);
   },
   methods: {
     toggleMobileNav() {
@@ -268,13 +231,6 @@ export default {
     closeMobileNav() {
       this.mobileNavOpen = false;
       document.body.classList.remove('nav-open');
-    },
-    closeAchievementNotification() {
-      this.showAchievementNotification = false;
-      if (this.notificationTimer) {
-        clearInterval(this.notificationTimer);
-        this.notificationTimer = null;
-      }
     },
     toggleTheme() {
       this.isLightTheme = !this.isLightTheme;
@@ -314,38 +270,6 @@ export default {
       if (languageSelector && !languageSelector.contains(event.target) && this.showLanguageDropdown) {
         this.showLanguageDropdown = false;
       }
-    },
-    handleAchievementUnlocked(event) {
-      const achievementData = event.detail;
-
-      console.log('Achievement unlocked event received:', achievementData);
-
-      // Set notification data
-      this.achievementMessage = `${achievementData.title} - ${achievementData.description}`;
-      this.showAchievementNotification = true;
-      this.notificationProgress = 100;
-
-      // Clear any existing timer
-      if (this.notificationTimer) {
-        clearInterval(this.notificationTimer);
-      }
-
-      // Create new timer
-      this.notificationTimer = setInterval(() => {
-        this.notificationProgress -= 1;
-        if (this.notificationProgress <= 0) {
-          clearInterval(this.notificationTimer);
-          this.showAchievementNotification = false;
-        }
-      }, 50);
-
-      // Auto-close after 5 seconds
-      setTimeout(() => {
-        if (this.notificationTimer) {
-          clearInterval(this.notificationTimer);
-          this.showAchievementNotification = false;
-        }
-      }, 5000);
     }
   }
 }
@@ -596,62 +520,6 @@ export default {
   position: relative;
 }
 
-.achievement-notification {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 1rem;
-  z-index: 200;
-  width: 300px;
-  border: 1px solid var(--color-border);
-}
-
-.achievement-content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  position: relative;
-}
-
-.achievement-icon {
-  font-size: 2rem;
-}
-
-.achievement-text {
-  flex: 1;
-}
-
-.achievement-text h4 {
-  margin: 0;
-  color: var(--color-text);
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.achievement-text p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 0.85rem;
-}
-
-.achievement-progress {
-  margin-top: 0.75rem;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-bar {
-  height: 100%;
-  background: var(--color-primary);
-  transition: width 0.05s linear;
-}
-
 @media (max-width: 1024px) {
   .header-content {
     padding: 0 1.5rem;
@@ -728,12 +596,6 @@ export default {
 
   .logo-text {
     display: none;
-  }
-
-  .achievement-notification {
-    width: calc(100% - 2rem);
-    left: 1rem;
-    right: 1rem;
   }
 }
 </style>

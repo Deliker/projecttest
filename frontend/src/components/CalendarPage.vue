@@ -14,72 +14,12 @@
             <span>{{ $t('calendar.addTask') }}</span>
           </button>
         </div>
-        <!-- Testing Panel (only visible in development mode) -->
-        <div v-if="isDevelopment" class="timer-test-panel">
-          <div class="test-panel-header">
-            <h3>Timer Testing Panel</h3>
-            <button @click="isTestPanelCollapsed = !isTestPanelCollapsed" class="collapse-btn">
-              {{ isTestPanelCollapsed ? 'Expand' : 'Collapse' }}
-            </button>
-          </div>
 
-          <div v-if="!isTestPanelCollapsed" class="test-panel-content">
-            <div class="test-input-group">
-              <label>Task Description:</label>
-              <input type="text" v-model="testTaskDescription" placeholder="Test Task" class="test-input" />
-            </div>
-
-            <div class="test-input-group">
-              <label>Total Duration (minutes):</label>
-              <input type="number" v-model="testTaskDuration" min="5" class="test-input" />
-            </div>
-
-            <div class="test-input-group">
-              <label>Time Remaining (minutes):</label>
-              <input type="number" v-model="testTimeRemaining" min="1" max="60" class="test-input" />
-            </div>
-
-            <div class="test-buttons">
-              <button @click="createTestTask" class="test-btn">
-                Create & Start Timer
-              </button>
-
-              <button @click="simulateTimerApproaching" class="test-btn warning">
-                Simulate Approaching End
-              </button>
-
-              <button @click="clearAllTestTimers" class="test-btn danger">
-                Clear All Timers
-              </button>
-            </div>
-
-            <div class="active-timers-section">
-              <h4>Active Timers:</h4>
-              <div v-if="Object.keys(timers).length === 0" class="no-timers">
-                No active timers
-              </div>
-              <div v-else class="active-timers-list">
-                <div v-for="(timer, id) in timers" :key="id" class="active-timer-item">
-                  <div class="timer-task-info">
-                    <span class="timer-id">ID: {{ id }}</span>
-                    <span class="timer-desc">{{ getTaskById(id)?.description || 'Unknown Task' }}</span>
-                  </div>
-                  <div class="timer-remaining">
-                    {{ formatTimeRemaining(getTaskById(id)?.timeRemaining || 0) }}
-                  </div>
-                  <button @click="stopTestTimer(id)" class="stop-timer-btn">
-                    Stop
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
         <div class="calendar-toolbar">
           <div class="month-selector">
             <button @click="previousMonth" class="month-nav-btn" aria-label="Previous month">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M15 18L9 12L15 6" stroke="currentCnpolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
             <div class="current-month-container">
@@ -440,7 +380,7 @@
                 <div class="task-actions">
                   <button class="task-action-btn edit" @click="editTask(element, index)" title="Редактировать">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-lineCap="round" stroke-linejoin="round"/>
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </button>
@@ -582,17 +522,25 @@
         <div class="drag-preview-text">{{ draggedTask?.description }}</div>
       </div>
     </div>
+
+    <!-- Achievement Notification Component -->
+    <AchievementNotification />
   </div>
 </template>
 
 <script>
 import { useI18n } from 'vue-i18n';
 import apiService from '../services/api';
+import AchievementNotification from '../components/AchievementsNotification.vue';
 
 export default {
   name: 'CalendarPage',
+  components: {
+    AchievementNotification
+  },
   setup() {
     const i18n = useI18n();
+
     return { i18n };
   },
   data() {
@@ -601,7 +549,6 @@ export default {
     const currentMonth = currentDate.getMonth();
     const currentDay = currentDate.getDate();
 
-
     const years = [];
     for (let i = -5; i <= 10; i++) {
       years.push(currentYear + i);
@@ -609,8 +556,6 @@ export default {
 
     return {
       completedTaskIds: new Set(),
-      lastAchievementNotificationTime: 0,
-      suppressAchievementNotifications: false,
       isDevelopment: process.env.NODE_ENV === 'development',
       isTestPanelCollapsed: false,
       testTaskDescription: 'Test Task',
@@ -1019,6 +964,11 @@ export default {
     closeTaskModal() {
       this.showModal = false;
       this.resetModalForm();
+
+      // Trigger achievement check after modal is closed
+      this.$nextTick(() => {
+        this.checkForNewAchievements();
+      });
     },
 
     resetModalForm() {
@@ -1038,7 +988,20 @@ export default {
 
     closeTaskListModal() {
       this.showTaskListModal = false;
+
+      // Trigger achievement check after modal is closed
+      this.$nextTick(() => {
+        this.checkForNewAchievements();
+      });
     },
+
+    // Method to check for new achievements (can be called after modal closure)
+    checkForNewAchievements() {
+      // This method can be used to trigger achievement checks
+      // For now, it's just a placeholder that could trigger specific achievement logic
+      console.log('Checking for new achievements after modal closure...');
+    },
+
 // Test methods
     createTestTask() {
       const taskId = `test_${Date.now()}_${this.testTaskCounter++}`;
@@ -1816,23 +1779,11 @@ export default {
             setTimeout(() => {
               const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
 
-              // Check cooldown before dispatching achievement event
-              const now = Date.now();
-              const timeSinceLastNotification = now - this.lastAchievementNotificationTime;
-              const cooldownPeriod = 5000; // 5 seconds cooldown
-
-              if (!this.suppressAchievementNotifications && timeSinceLastNotification > cooldownPeriod) {
-                // Dispatch task-completed event
-                const taskCompletedEvent = new CustomEvent('task-completed', {
-                  detail: completedTask
-                });
-                document.dispatchEvent(taskCompletedEvent);
-
-                // Update the timestamp
-                this.lastAchievementNotificationTime = now;
-              } else {
-                console.log('Achievement notification suppressed due to cooldown');
-              }
+              // Dispatch task-completed event for achievements
+              const taskCompletedEvent = new CustomEvent('task-completed', {
+                detail: completedTask
+              });
+              document.dispatchEvent(taskCompletedEvent);
 
               if (this.tasks[key].length === 0) {
                 delete this.tasks[key];
@@ -1847,23 +1798,11 @@ export default {
           } else {
             const completedTask = this.tasks[key].splice(actualIndex, 1)[0];
 
-            // Same notification cooldown logic as above
-            const now = Date.now();
-            const timeSinceLastNotification = now - this.lastAchievementNotificationTime;
-            const cooldownPeriod = 5000; // 5 seconds cooldown
-
-            if (!this.suppressAchievementNotifications && timeSinceLastNotification > cooldownPeriod) {
-              // Dispatch task-completed event
-              const taskCompletedEvent = new CustomEvent('task-completed', {
-                detail: completedTask
-              });
-              document.dispatchEvent(taskCompletedEvent);
-
-              // Update the timestamp
-              this.lastAchievementNotificationTime = now;
-            } else {
-              console.log('Achievement notification suppressed due to cooldown');
-            }
+            // Dispatch task-completed event for achievements
+            const taskCompletedEvent = new CustomEvent('task-completed', {
+              detail: completedTask
+            });
+            document.dispatchEvent(taskCompletedEvent);
 
             if (this.tasks[key].length === 0) {
               delete this.tasks[key];
@@ -1886,29 +1825,8 @@ export default {
     },
 
     showCompletionConfetti() {
-      this.notificationMessage = "Task completed!";
-      this.showNotification = true;
-      this.notificationProgress = 100;
-
-      this.notificationTimer = setInterval(() => {
-        this.notificationProgress -= 2;
-        if (this.notificationProgress <= 0) {
-          clearInterval(this.notificationTimer);
-          this.showNotification = false;
-        }
-      }, 50);
-
-      setTimeout(() => {
-        clearInterval(this.notificationTimer);
-        this.showNotification = false;
-      }, 3000);
-    },
-    suppressNotifications(duration = 5000) {
-      this.suppressAchievementNotifications = true;
-
-      setTimeout(() => {
-        this.suppressAchievementNotifications = false;
-      }, duration);
+      // Simple completion feedback - the main achievement notification will be handled by AchievementNotification component
+      console.log("Task completed! Achievement notification will be shown by AchievementNotification component if applicable.");
     },
 
     async editTask(task) {
@@ -1941,6 +1859,11 @@ export default {
 
     closeEditModal() {
       this.showEditModal = false;
+
+      // Trigger achievement check after modal is closed
+      this.$nextTick(() => {
+        this.checkForNewAchievements();
+      });
     },
 
     async saveEditedTask() {
@@ -2288,44 +2211,7 @@ export default {
       }
     }
   },
-  mountedAdditionalHandlers() {
-    // Включение слушателя событий о разблокировке достижений
-    document.addEventListener('achievement-unlocked', (event) => {
-      // Проверка на время с момента последнего уведомления
-      const now = Date.now();
-      const timeSinceLastNotification = now - this.lastAchievementNotificationTime;
-      const cooldownPeriod = 5000; // 5 секунд задержки
 
-      if (!this.suppressAchievementNotifications && timeSinceLastNotification > cooldownPeriod) {
-        const achievementData = event.detail;
-        this.notificationMessage = `${achievementData.title} - ${achievementData.description}`;
-        this.showNotification = true;
-        this.notificationProgress = 100;
-
-        if (this.notificationTimer) {
-          clearInterval(this.notificationTimer);
-        }
-
-        this.notificationTimer = setInterval(() => {
-          this.notificationProgress -= 1;
-          if (this.notificationProgress <= 0) {
-            clearInterval(this.notificationTimer);
-            this.showNotification = false;
-          }
-        }, 50);
-
-        setTimeout(() => {
-          clearInterval(this.notificationTimer);
-          this.showNotification = false;
-        }, 5000);
-
-        // Обновить временную метку последнего уведомления
-        this.lastAchievementNotificationTime = now;
-      } else {
-        console.log('Achievement notification skipped due to cooldown');
-      }
-    });
-  },
   async mounted() {
     try {
       // First load from localStorage
@@ -2344,31 +2230,6 @@ export default {
     document.addEventListener('click', this.handleOutsideClick);
     window.addEventListener('mousemove', this.trackMousePosition);
     window.addEventListener('mouseup', this.onDragEnd);
-
-    // Listen for achievement-unlocked events
-    document.addEventListener('achievement-unlocked', (event) => {
-      const achievementData = event.detail;
-      this.notificationMessage = `${achievementData.title} - ${achievementData.description}`;
-      this.showNotification = true;
-      this.notificationProgress = 100;
-
-      if (this.notificationTimer) {
-        clearInterval(this.notificationTimer);
-      }
-
-      this.notificationTimer = setInterval(() => {
-        this.notificationProgress -= 1;
-        if (this.notificationProgress <= 0) {
-          clearInterval(this.notificationTimer);
-          this.showNotification = false;
-        }
-      }, 50);
-
-      setTimeout(() => {
-        clearInterval(this.notificationTimer);
-        this.showNotification = false;
-      }, 5000);
-    });
   },
 
   beforeUnmount() {
@@ -2382,13 +2243,10 @@ export default {
     });
     this.timers = {};
     this.notifiedTimers.clear();
-
-    if (this.notificationTimer) {
-      clearInterval(this.notificationTimer);
-    }
   }
 };
 </script>
+
 <style scoped>
 .calendar-page {
   width: 100%;
@@ -2479,6 +2337,7 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   animation: fadeIn 0.8s ease;
 }
+
 @keyframes pulse-warning {
   0% {
     background: rgba(255, 165, 0, 0.1);
@@ -2497,6 +2356,7 @@ export default {
 .timer-warning {
   animation: pulse-warning 1s ease infinite;
 }
+
 .timer-warning-notification {
   background: rgba(255, 165, 0, 0.9) !important;
   border: 1px solid #FFA500 !important;
@@ -2531,6 +2391,7 @@ export default {
 .timer-notification-title.warning {
   color: #FF8C00;
 }
+
 .month-selector {
   display: flex;
   align-items: center;
@@ -3782,7 +3643,6 @@ export default {
   padding-top: 1rem;
 }
 
-
 .notification-close {
   background: transparent;
   border: none;
@@ -3898,6 +3758,63 @@ export default {
   }
 }
 
+/* Notification slide animation */
+.notification-slide-enter-active,
+.notification-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.notification-slide-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.notification-slide-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* Other necessary animations and styles */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
 /* Scrollbar styling for modals */
 .modal-content::-webkit-scrollbar {
   width: 6px;
@@ -3915,6 +3832,106 @@ export default {
 
 .modal-content::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-secondary);
+}
+
+/* Close button */
+.close-btn {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  color: var(--color-text);
+  background: var(--color-card-bg-hover);
+}
+
+/* Modal title */
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--color-text);
+}
+
+/* Form styling */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.save-task {
+  width: 100%;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.save-task:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(var(--color-primary-rgb), 0.3);
+}
+
+.add-task-inline {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  padding: 0.25rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 0.5rem;
+}
+
+.add-task-inline:hover {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.date-display {
+  color: var(--color-text);
 }
 
 @media (max-width: 1280px) {
@@ -3974,6 +3991,7 @@ export default {
     width: 100%;
     justify-content: space-between;
   }
+
   /* Test Panel Styles */
   .timer-test-panel {
     width: 100%;

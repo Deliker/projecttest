@@ -168,15 +168,23 @@
     </div>
 
     <!-- Debug Panel for Development Mode -->
-    <div v-if="isDevMode" class="debug-panel">
+    <div v-if="isDevMode && showDebugPanel" class="debug-panel">
+      <div class="debug-header">
+        <h4>{{ $t('achievements.debug.title') }}</h4>
+        <button class="debug-close-btn" @click="toggleDebugPanel" :title="$t('achievements.debug.hide')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
       <button class="debug-btn unlock-random" @click="unlockRandomAchievement">
-        Unlock Random Achievement
+        {{ $t('achievements.debug.unlockRandom') }}
       </button>
       <button class="debug-btn reset-all" @click="resetAllAchievements">
-        Reset All Achievements
+        {{ $t('achievements.debug.resetAll') }}
       </button>
       <div class="debug-achievements-list">
-        <h4>Achievements Status:</h4>
+        <h4>{{ $t('achievements.debug.status') }}:</h4>
         <div v-for="category in categories" :key="category.id">
           <strong>{{ category.id }}:</strong>
           <span v-for="ach in achievementsByCategory[category.id] || []"
@@ -186,6 +194,17 @@
           </span>
         </div>
       </div>
+    </div>
+
+    <!-- Debug Panel Toggle Button -->
+    <div v-if="isDevMode && !showDebugPanel" class="debug-toggle">
+      <button class="debug-toggle-btn" @click="toggleDebugPanel" :title="$t('achievements.debug.show')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Debug
+      </button>
     </div>
   </div>
 </template>
@@ -214,6 +233,7 @@ export default {
       isLoading: true,
       error: null,
       isDevMode: process.env.NODE_ENV === 'development',
+      showDebugPanel: false, // Initially hidden
       refreshInterval: null
     };
   },
@@ -365,6 +385,10 @@ export default {
     resetFilters() {
       this.searchQuery = '';
       this.filter = 'all';
+    },
+
+    toggleDebugPanel() {
+      this.showDebugPanel = !this.showDebugPanel;
     },
 
     async unlockRandomAchievement() {
@@ -963,10 +987,42 @@ export default {
   flex-direction: column;
   gap: 0.5rem;
   z-index: 50;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.9);
   padding: 1rem;
-  border-radius: 8px;
-  max-width: 300px;
+  border-radius: 12px;
+  max-width: 320px;
+  border: 1px solid var(--color-border);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.debug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  color: white;
+}
+
+.debug-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-primary);
+}
+
+.debug-close-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.debug-close-btn:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .debug-btn {
@@ -976,6 +1032,7 @@ export default {
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-weight: 500;
 }
 
 .debug-btn.unlock-random {
@@ -983,22 +1040,69 @@ export default {
   color: white;
 }
 
+.debug-btn.unlock-random:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+}
+
 .debug-btn.reset-all {
   background: #ff4444;
   color: white;
 }
 
+.debug-btn.reset-all:hover {
+  background: #cc0000;
+  transform: translateY(-1px);
+}
+
 .debug-achievements-list {
   margin-top: 1rem;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: white;
   max-height: 200px;
   overflow-y: auto;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.debug-achievements-list h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--color-primary);
 }
 
 .unlocked-debug {
   color: #4CAF50;
   margin-right: 0.5rem;
+}
+
+/* Debug Toggle Button */
+.debug-toggle {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 50;
+}
+
+.debug-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.debug-toggle-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Animations */
@@ -1110,6 +1214,10 @@ export default {
     flex-direction: column;
     gap: 2rem;
   }
+
+  .debug-panel {
+    max-width: 280px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1132,6 +1240,17 @@ export default {
 
   .category-title {
     font-size: 1.25rem;
+  }
+
+  .debug-panel {
+    left: 0.5rem;
+    bottom: 0.5rem;
+    max-width: calc(100vw - 1rem);
+  }
+
+  .debug-toggle {
+    left: 0.5rem;
+    bottom: 0.5rem;
   }
 }
 </style>

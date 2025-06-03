@@ -15,7 +15,6 @@ export default {
         admin: 'Admin Panel'
     },
 
-
     // Home Page
     home: {
         hero: {
@@ -106,19 +105,68 @@ export default {
         },
         achievements: {
             unlocked: 'Achievement Unlocked!',
-            beginner: 'First Step (Complete your first task)',
-            productiveDay: 'Productive Day (Complete 5 tasks in one day)',
-            earlyBird: 'Early Bird (Complete a task before 6 AM)',
-            nightOwl: 'Night Owl (Complete a task after midnight)',
-            goalOriented: 'Goal Oriented (Complete 10 tasks in a week)',
-            weekendWarrior: 'Weekend Warrior (Complete 5 tasks during weekend)',
-            perfectWeek: 'Perfect Week (Complete at least 1 task every day of the week)',
-            projectLeader: 'Project Leader (Complete all tasks in a month)',
-            timeMaster: 'Time Master (Complete 50 tasks)',
-            consistency: 'Consistency King (Complete tasks for 30 days in a row)',
-            earlyPlanner: 'Early Planner (Plan tasks a week in advance)',
-            speedRunner: 'Speed Runner (Complete 3 tasks within an hour)',
-            multitasker: 'Multitasker (Complete tasks in 5 different categories)'
+
+            // Базовые достижения
+            beginner: 'First Step',
+            beginnerDesc: 'Complete your first task',
+
+            productiveDay: 'Productive Day',
+            productiveDayDesc: 'Complete 5 tasks in one day',
+
+            superProductiveDay: 'Super Productive Day',
+            superProductiveDayDesc: 'Complete 10 tasks in one day',
+
+            earlyBird: 'Early Bird',
+            earlyBirdDesc: 'Complete a task before 6 AM',
+
+            nightOwl: 'Night Owl',
+            nightOwlDesc: 'Complete a task after midnight',
+
+            goalOriented: 'Goal Oriented',
+            goalOrientedDesc: 'Complete 10 tasks in a week',
+
+            weekendWarrior: 'Weekend Warrior',
+            weekendWarriorDesc: 'Complete 5 tasks during weekend',
+
+            perfectWeek: 'Perfect Week',
+            perfectWeekDesc: 'Complete at least 1 task every day of the week',
+
+            projectLeader: 'Project Leader',
+            projectLeaderDesc: 'Complete all tasks in a month',
+
+            timeMaster: 'Time Master',
+            timeMasterDesc: 'Complete 50 tasks',
+
+            consistency: 'Consistency King',
+            consistencyDesc: 'Complete tasks for 30 days in a row',
+
+            earlyPlanner: 'Early Planner',
+            earlyPlannerDesc: 'Plan tasks a week in advance',
+
+            speedRunner: 'Speed Runner',
+            speedRunnerDesc: 'Complete 3 tasks within an hour',
+
+            multitasker: 'Multitasker',
+            multitaskerDesc: 'Complete tasks in 5 different categories',
+
+            // Дополнительные достижения
+            taskMaster: 'Task Master',
+            taskMasterDesc: 'Complete 100 tasks total',
+
+            ultraProductive: 'Ultra Productive',
+            ultraProductiveDesc: 'Complete 15 tasks in one day',
+
+            organized: 'Organized',
+            organizedDesc: 'Use all available categories',
+
+            marathoner: 'Marathoner',
+            marathonerDesc: 'Complete tasks for 100 days straight',
+
+            earlyRiser: 'Early Riser',
+            earlyRiserDesc: 'Complete 10 tasks before 8 AM',
+
+            workaholic: 'Workaholic',
+            workaholicDesc: 'Complete 20 work tasks in a week'
         },
         timer: {
             expired: 'Timer Expired',
@@ -166,7 +214,98 @@ export default {
             message: 'Could not load achievements. Please try again.',
             retry: 'Retry'
         },
-        confirmReset: 'Are you sure you want to reset all achievements? This cannot be undone.'
+        confirmReset: 'Are you sure you want to reset all achievements? This cannot be undone.',
+
+        // Daily Achievements
+        daily: {
+            firstTask: 'First Task',
+            earlyStart: 'Early Start',
+            nightProductivity: 'Night Productivity',
+            taskStreak: 'Task Streak',
+            focusedWork: 'Focused Work'
+        },
+
+        // Weekly Achievements
+        weekly: {
+            productiveWeek: 'Productive Week',
+            categoryMaster: 'Category Master',
+            weekendProductivity: 'Weekend Productivity',
+            planningAhead: 'Planning Ahead',
+            completionRate: 'High Completion Rate'
+        },
+
+        // Monthly Achievements
+        monthly: {
+            monthlyGoal: 'Monthly Goal',
+            consistencyMaster: 'Consistency Master',
+            categoryExplorer: 'Category Explorer',
+            timeOptimizer: 'Time Optimizer',
+            productivityChampion: 'Productivity Champion'
+        },
+
+        // Special Achievements
+        special: {
+            speedster: 'Speedster',
+            perfectionist: 'Perfectionist',
+            earlyAdopter: 'Early Adopter',
+            taskMaster: 'Task Master',
+            dedication: 'Dedication'
+        },
+
+        // Achievement Descriptions
+        descriptions: {
+            beginner: 'Complete your first task',
+            productiveDay: 'Complete 5 tasks in one day',
+            earlyBird: 'Complete a task before 6 AM',
+            nightOwl: 'Complete a task after midnight',
+            goalOriented: 'Complete 10 tasks in a week',
+            weekendWarrior: 'Complete 5 tasks during weekend',
+            perfectWeek: 'Complete at least 1 task every day of the week',
+            projectLeader: 'Complete all tasks in a month',
+            timeMaster: 'Complete 50 tasks',
+            consistency: 'Complete tasks for 30 days in a row',
+            earlyPlanner: 'Plan tasks a week in advance',
+            speedRunner: 'Complete 3 tasks within an hour',
+            multitasker: 'Complete tasks in 5 different categories',
+
+            // Daily achievement descriptions
+            firstTask: 'Complete your first task of the day',
+            earlyStart: 'Start working before 7 AM',
+            nightProductivity: 'Be productive after 10 PM',
+            taskStreak: 'Complete tasks for 7 days straight',
+            focusedWork: 'Complete 3 tasks without breaks',
+
+            // Weekly achievement descriptions
+            productiveWeek: 'Complete 20 tasks in a week',
+            categoryMaster: 'Complete tasks in all categories',
+            weekendProductivity: 'Stay productive on weekends',
+            planningAhead: 'Plan your entire week in advance',
+            completionRate: 'Achieve 90% task completion rate',
+
+            // Monthly achievement descriptions
+            monthlyGoal: 'Complete 100 tasks in a month',
+            consistencyMaster: 'Maintain daily productivity for a month',
+            categoryExplorer: 'Use all available task categories',
+            timeOptimizer: 'Complete tasks ahead of schedule',
+            productivityChampion: 'Become the ultimate productivity master',
+
+            // Special achievement descriptions
+            speedster: 'Complete tasks in record time',
+            perfectionist: 'Complete all tasks without any delays',
+            earlyAdopter: 'Be among the first to use new features',
+            taskMaster: 'Master the art of task management',
+            dedication: 'Show unwavering commitment to productivity'
+        },
+
+        // Debug Panel
+        debug: {
+            title: 'Debug Panel',
+            unlockRandom: 'Unlock Random Achievement',
+            resetAll: 'Reset All Achievements',
+            status: 'Achievements Status',
+            show: 'Show Debug Panel',
+            hide: 'Hide Debug Panel'
+        }
     },
 
     // Auth Page
